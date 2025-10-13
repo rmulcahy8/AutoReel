@@ -8,6 +8,8 @@ A minimal static prototype for the AutoReel control panel. It provides a clean s
 - Input field for entering a topic or keyword
 - Generate button ready to trigger future automation
 - Placeholder output panel for showing generated script text
+- Built-in voiceover creation button that uses the open-source meSpeak (eSpeak)
+  engine to turn scripts into downloadable WAV audio
 
 ## Prerequisites
 
@@ -37,6 +39,17 @@ Follow one of the exact workflows below.
    ```
 4. Open your browser and visit [http://localhost:8000/index.html](http://localhost:8000/index.html).
 5. When you are done, return to the terminal and press `Ctrl+C` to stop the server.
+
+## Create voiceover audio
+
+Once your scripts appear in the output panel, click **Create Voiceover** beneath any
+script to synthesize narration with the free, open-source
+[meSpeak.js](https://github.com/niklassaers/mespeak) wrapper for the eSpeak speech
+synthesizer. The UI will embed an audio player and provide a `Download WAV` link so
+you can review or save the generated voiceover immediately.
+
+> **Note:** The text-to-speech engine loads directly from a CDN and runs entirely in
+> your browser—no paid API keys or server-side components are required.
 
 ## Next Steps
 
