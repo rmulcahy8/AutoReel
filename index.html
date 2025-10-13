@@ -86,6 +86,33 @@
         box-shadow: 0 0 0 3px rgba(106, 131, 255, 0.35);
       }
 
+      .quantity-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .quantity-row input {
+        flex: 1 1 0;
+      }
+
+      .cost-display {
+        font-weight: 600;
+        background: rgba(18, 24, 36, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 10px 14px;
+        min-width: 120px;
+        text-align: center;
+        color: #bac6ff;
+      }
+
+      .cost-note {
+        margin: 8px 0 0;
+        font-size: 0.85rem;
+        color: #818ab5;
+      }
+
       button {
         padding: 14px 20px;
         border-radius: 12px;
@@ -254,14 +281,22 @@
       </section>
       <section>
         <label for="quantity">Number of scripts</label>
-        <input
-          id="quantity"
-          type="number"
-          name="quantity"
-          min="1"
-          max="10"
-          value="1"
-        />
+        <div class="quantity-row">
+          <input
+            id="quantity"
+            type="number"
+            name="quantity"
+            min="1"
+            max="10"
+            value="1"
+          />
+          <span id="costDisplay" class="cost-display" aria-live="polite"></span>
+        </div>
+        <p class="cost-note">
+          Estimate uses GPT-4.1 nano pricing ($0.20 / 1M input tokens and $0.80 / 1M output
+          tokens) assuming roughly 150 input and 350 output tokens per script, which is about
+          $0.00031 per script.
+        </p>
       </section>
       <section>
         <button id="generateButton" type="button">Generate</button>
@@ -279,6 +314,40 @@
       const quantityInput = document.getElementById("quantity");
       const generateButton = document.getElementById("generateButton");
       const outputPanel = document.querySelector(".output-panel");
+      const costDisplay = document.getElementById("costDisplay");
+
+      const MODEL_NAME = "gpt-4.1-nano";
+      const INPUT_PRICE_PER_TOKEN = 0.2 / 1_000_000;
+      const OUTPUT_PRICE_PER_TOKEN = 0.8 / 1_000_000;
+      const EST_INPUT_TOKENS_PER_SCRIPT = 150;
+      const EST_OUTPUT_TOKENS_PER_SCRIPT = 350;
+
+      const COST_PER_SCRIPT =
+        EST_INPUT_TOKENS_PER_SCRIPT * INPUT_PRICE_PER_TOKEN +
+        EST_OUTPUT_TOKENS_PER_SCRIPT * OUTPUT_PRICE_PER_TOKEN;
+
+      function formatCurrency(amount, fractionDigits = 2) {
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: fractionDigits,
+          maximumFractionDigits: fractionDigits,
+        }).format(amount);
+      }
+
+      function updateCostEstimate() {
+        const quantity = Math.max(1, Number.parseInt(quantityInput.value, 10) || 1);
+        const totalCost = quantity * COST_PER_SCRIPT;
+        quantityInput.value = quantity;
+        const fractionDigits = totalCost < 0.01 ? 5 : 2;
+        const perScriptDigits = COST_PER_SCRIPT < 0.01 ? 5 : 2;
+        costDisplay.textContent = `${formatCurrency(totalCost, fractionDigits)} total`;
+        const perScriptUSD = formatCurrency(COST_PER_SCRIPT, perScriptDigits);
+        costDisplay.setAttribute(
+          "aria-label",
+          `Total cost ${formatCurrency(totalCost, fractionDigits)} at ${perScriptUSD} per script based on GPT-4.1 nano rates.`
+        );
+      }
 
       let ttsReady;
       if (window.meSpeak) {
@@ -505,7 +574,7 @@
               Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-              model: "gpt-4o-mini",
+              model: MODEL_NAME,
               temperature: 0.7,
               messages: [
                 {
@@ -557,6 +626,9 @@
       }
 
       generateButton.addEventListener("click", generateScripts);
+
+      quantityInput.addEventListener("input", updateCostEstimate);
+      updateCostEstimate();
 
       topicInput.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
