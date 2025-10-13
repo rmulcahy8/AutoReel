@@ -134,6 +134,12 @@
         transform: translateY(0);
       }
 
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
       .secondary-button {
         background: transparent;
         color: #f4f6ff;
@@ -177,6 +183,16 @@
         border: 1px solid rgba(255, 255, 255, 0.06);
         display: grid;
         gap: 8px;
+      }
+
+      .output-panel .output-preface {
+        margin: 0;
+        padding: 16px;
+        border-radius: 12px;
+        background: rgba(22, 30, 48, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #cfd6ff;
+        font-size: 0.95rem;
       }
 
       .output-panel h2 {
@@ -299,7 +315,12 @@
         </p>
       </section>
       <section>
-        <button id="generateButton" type="button">Generate</button>
+        <div class="button-row">
+          <button id="generateButton" type="button">Generate</button>
+          <button id="sampleButton" type="button" class="secondary-button">
+            Use Sample Scripts
+          </button>
+        </div>
       </section>
       <section class="output-panel" aria-live="polite">
         <p class="placeholder">
@@ -313,6 +334,7 @@
       const apiKeyInput = document.getElementById("apiKey");
       const quantityInput = document.getElementById("quantity");
       const generateButton = document.getElementById("generateButton");
+      const sampleButton = document.getElementById("sampleButton");
       const outputPanel = document.querySelector(".output-panel");
       const costDisplay = document.getElementById("costDisplay");
 
@@ -484,8 +506,14 @@
         outputPanel.append(status);
       }
 
-      function renderScripts(scripts) {
+      function renderScripts(scripts, options = {}) {
         outputPanel.innerHTML = "";
+        if (options.prefaceMessage) {
+          const preface = document.createElement("p");
+          preface.className = "output-preface";
+          preface.textContent = options.prefaceMessage;
+          outputPanel.append(preface);
+        }
         scripts.forEach((item, index) => {
           const article = document.createElement("article");
           const heading = document.createElement("h2");
@@ -546,6 +574,29 @@
         }
         return cleaned;
       }
+
+      const SAMPLE_SCRIPTS = [
+        {
+          title: "AI Morning Routine Hacks",
+          hook:
+            "Want your mornings to run smoother than your favorite latte art?",
+          script:
+            "[Intro]\nIt's 7AM and your AI assistant already knows you hit snooze. Let's build the ultimate smart morning routine in 45 seconds!\n\n[Tip 1]\nStart with a wake-up light synced to your sleep tracker so you rise when you're in a light sleep cycle. No more zombie mode.\n\n[Tip 2]\nQueue a 3-minute AI-generated news briefing that's personalized to your goals—finance, fitness, or fandom. Let the headlines come to you.\n\n[Tip 3]\nUse an AI meal planner that checks your fridge inventory and suggests a breakfast with the nutrients you skipped yesterday. Think: protein-packed smoothie ready before you are.\n\n[Wrap]\nGive these a shot tomorrow and let your AI do the heavy lifting before the coffee even brews. Follow for more smarter-than-average life upgrades!",
+        },
+        {
+          title: "Productivity Stack in a Backpack",
+          hook:
+            "If your to-do list keeps multiplying, this AI-assisted workflow will tame it.",
+          script:
+            "[Hook]\nFeeling overwhelmed? Let's pack your bag with AI tools that crush chaos in under a minute.\n\n[Tool 1]\nFirst, route your inbox through an AI triage assistant. It drafts replies to common questions so you only approve and send.\n\n[Tool 2]\nNext, feed your meeting notes into an AI summarizer. You get bullet action items and deadlines without replaying the whole call.\n\n[Tool 3]\nFinally, use an AI time-blocking calendar that shuffles tasks when unexpected meetings pop up. Your priorities stay locked in.\n\n[Wrap]\nStack these together and you just hacked your workload without adding hours. Save this for your next Monday reset!",
+        },
+        {
+          title: "Why Your Video Script Needs B-Roll Cues",
+          hook: "Stop losing views at second 12—your visuals need a script too!",
+          script:
+            "[Intro]\nWant people to watch past the hook? Drop B-roll cues directly in your script. Here's how.\n\n[Step 1]\nAs you write, flag visual anchors every 5-7 sentences. Example: \"Cut to keyboard close-up while we mention productivity hacks.\"\n\n[Step 2]\nUse an AI storyboard tool to match each cue with stock footage or animations automatically. Instant shot list, zero guesswork.\n\n[Step 3]\nExport the cues alongside your narration so your editor—or you—can drag and drop assets without pausing the voiceover.\n\n[Wrap]\nIntegrate this today and watch your retention climb. Follow for more shortcuts that keep viewers glued!",
+        },
+      ];
 
       async function generateScripts() {
         const topic = topicInput.value.trim();
@@ -626,6 +677,16 @@
       }
 
       generateButton.addEventListener("click", generateScripts);
+
+      function showSampleScripts() {
+        renderScripts(SAMPLE_SCRIPTS, {
+          prefaceMessage:
+            "Preview scripts generated from a sample prompt. Connect your OpenAI API key to craft custom scripts without spending credits upfront.",
+        });
+        topicInput.focus();
+      }
+
+      sampleButton.addEventListener("click", showSampleScripts);
 
       quantityInput.addEventListener("input", updateCostEstimate);
       updateCostEstimate();
