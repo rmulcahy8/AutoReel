@@ -10,7 +10,6 @@
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.jsdelivr.net/npm/mespeak/mespeak.min.js"></script>
     <style>
       :root {
         color-scheme: light dark;
@@ -215,29 +214,6 @@
         white-space: pre-line;
       }
 
-      .voiceover-controls {
-        display: grid;
-        gap: 12px;
-        margin-top: 12px;
-      }
-
-      .voiceover-controls audio {
-        width: 100%;
-      }
-
-      .voiceover-download {
-        color: #b7c5ff;
-        font-size: 0.9rem;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .voiceover-download:hover {
-        text-decoration: underline;
-      }
-
       .status-message {
         padding: 12px 16px;
         border-radius: 12px;
@@ -371,133 +347,6 @@
         );
       }
 
-      let ttsReady;
-      if (window.meSpeak) {
-        const loadConfig = new Promise((resolve, reject) => {
-          meSpeak.loadConfig(
-            "https://cdn.jsdelivr.net/npm/mespeak/mespeak_config.json",
-            (success) => {
-              if (success) {
-                resolve();
-              } else {
-                reject(new Error("Failed to load meSpeak configuration."));
-              }
-            }
-          );
-        });
-
-        const loadVoice = new Promise((resolve, reject) => {
-          meSpeak.loadVoice(
-            "https://cdn.jsdelivr.net/npm/mespeak/voices/en/en-us.json",
-            (success) => {
-              if (success) {
-                resolve();
-              } else {
-                reject(new Error("Failed to load the English voice profile."));
-              }
-            }
-          );
-        });
-
-        ttsReady = Promise.all([loadConfig, loadVoice]);
-      } else {
-        ttsReady = Promise.reject(new Error("Text-to-speech engine did not load."));
-      }
-
-      function slugify(text) {
-        return (
-          text
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)+/g, "")
-            .slice(0, 60) || "voiceover"
-        );
-      }
-
-      async function createVoiceover(scriptText, container, title = "Script") {
-        const button = container.querySelector("button");
-        const status =
-          container.querySelector(".voiceover-status") ||
-          (() => {
-            const element = document.createElement("p");
-            element.className = "voiceover-status";
-            element.style.margin = "0";
-            element.style.fontSize = "0.9rem";
-            element.style.color = "#c4ccff";
-            container.append(element);
-            return element;
-          })();
-
-        const resetButton = () => {
-          button.disabled = false;
-          button.textContent = "Create Voiceover";
-        };
-
-        try {
-          button.disabled = true;
-          button.textContent = "Generating audio...";
-          status.textContent = "Loading open-source voice model...";
-
-          await ttsReady;
-
-          const audioData = await new Promise((resolve, reject) => {
-            meSpeak.speak(
-              scriptText,
-              {
-                rawdata: "base64",
-                amplitude: 120,
-                pitch: 50,
-                speed: 170,
-                voice: "en/en-us",
-              },
-              (data) => {
-                if (data) {
-                  resolve(data);
-                } else {
-                  reject(new Error("The speech engine returned an empty response."));
-                }
-              }
-            );
-          });
-
-          const audioSrc = `data:audio/wav;base64,${audioData}`;
-
-          let audioElement = container.querySelector("audio");
-          if (!audioElement) {
-            audioElement = document.createElement("audio");
-            audioElement.controls = true;
-            container.append(audioElement);
-          }
-          audioElement.src = audioSrc;
-
-          let downloadLink = container.querySelector(".voiceover-download");
-          if (!downloadLink) {
-            downloadLink = document.createElement("a");
-            downloadLink.className = "voiceover-download";
-            downloadLink.textContent = "Download WAV";
-            downloadLink.setAttribute(
-              "aria-label",
-              "Download the generated voiceover as a WAV file"
-            );
-            container.append(downloadLink);
-          }
-          const fileName = `${slugify(title)}.wav`;
-          downloadLink.href = audioSrc;
-          downloadLink.download = fileName;
-
-          status.textContent =
-            "Voiceover ready. Press play to review or download the WAV file.";
-        } catch (error) {
-          console.error(error);
-          status.textContent =
-            error instanceof Error
-              ? error.message
-              : "Something went wrong while creating the voiceover.";
-        } finally {
-          resetButton();
-        }
-      }
-
       function renderStatus(message, variant = "info") {
         outputPanel.innerHTML = "";
         const status = document.createElement("div");
@@ -538,24 +387,6 @@
             const scriptBody = document.createElement("p");
             scriptBody.textContent = item.script;
             article.append(scriptBody);
-
-            const voiceoverContainer = document.createElement("div");
-            voiceoverContainer.className = "voiceover-controls";
-
-            const voiceoverButton = document.createElement("button");
-            voiceoverButton.type = "button";
-            voiceoverButton.className = "secondary-button";
-            voiceoverButton.textContent = "Create Voiceover";
-            voiceoverButton.addEventListener("click", () =>
-              createVoiceover(
-                item.script,
-                voiceoverContainer,
-                item.title || `concept-${index + 1}`
-              )
-            );
-
-            voiceoverContainer.append(voiceoverButton);
-            article.append(voiceoverContainer);
           }
 
           outputPanel.append(article);
