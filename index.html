@@ -263,8 +263,11 @@
           value="1"
         />
       </section>
-      <section>
+      <section style="display: flex; gap: 12px; flex-wrap: wrap;">
         <button id="generateButton" type="button">Generate</button>
+        <button id="sampleButton" type="button" class="secondary-button">
+          Use sample script
+        </button>
       </section>
       <section class="output-panel" aria-live="polite">
         <p class="placeholder">
@@ -278,7 +281,22 @@
       const apiKeyInput = document.getElementById("apiKey");
       const quantityInput = document.getElementById("quantity");
       const generateButton = document.getElementById("generateButton");
+      const sampleButton = document.getElementById("sampleButton");
       const outputPanel = document.querySelector(".output-panel");
+
+      const sampleScripts = [
+        {
+          title: "5 Brain-Boosting Morning Habits",
+          hook:
+            "Want to feel unstoppable before 9AM? Here are five science-backed habits that prime your brain for a focused day.",
+          script:
+            "[INTRO]\nYou snooze your alarm and reach for your phone... and instantly your brain is in reactive mode. Let's flip that.\n\n[SCENE 1]\nHabit one: Light before likes. Step outside or pull those curtains. Natural light tells your brain to start producing serotonin—your focus fuel.\n\n[SCENE 2]\nHabit two: Hydrate with purpose. Add a pinch of sea salt or lemon to your water. Electrolytes help neurons fire faster than plain coffee alone.\n\n[SCENE 3]\nHabit three: Micro movement. 60 seconds of jumping jacks or air squats wakes up your nervous system and boosts dopamine.\n\n[SCENE 4]\nHabit four: Brain priming. Spend two minutes writing your top three wins for the day. Your prefrontal cortex loves clear targets.\n\n[SCENE 5]\nHabit five: Mindful bite. Eat something with protein and healthy fats—think Greek yogurt with berries—to stabilize energy for hours.\n\n[OUTRO]\nStack these five habits tomorrow morning, and watch how fast your focus transforms. Save this so you actually try it!",
+        },
+      ];
+
+      function renderSampleScripts() {
+        renderScripts(sampleScripts);
+      }
 
       let ttsReady;
       if (window.meSpeak) {
@@ -557,6 +575,7 @@
       }
 
       generateButton.addEventListener("click", generateScripts);
+      sampleButton.addEventListener("click", renderSampleScripts);
 
       topicInput.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
