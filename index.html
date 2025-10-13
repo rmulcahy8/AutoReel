@@ -53,14 +53,6 @@
         gap: 12px;
       }
 
-      h1 span {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #9db2ff;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-
       p.description {
         margin: 0;
         color: #cbd5f5;
@@ -74,7 +66,8 @@
         color: #e7eafc;
       }
 
-      input[type="text"] {
+      input[type="text"],
+      input[type="number"] {
         width: 100%;
         padding: 14px 16px;
         border-radius: 12px;
@@ -85,7 +78,8 @@
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
 
-      input[type="text"]:focus {
+      input[type="text"]:focus,
+      input[type="number"]:focus {
         outline: none;
         border-color: #6a83ff;
         box-shadow: 0 0 0 3px rgba(106, 131, 255, 0.35);
@@ -143,11 +137,11 @@
       <header>
         <h1>
           AI Shorts Factory
-          <span>Control Panel</span>
         </h1>
         <p class="description">
           Prototype interface for generating YouTube-ready short-form content.
-          Hook up your automation backend when you're ready.
+          Enter a topic, choose how many variations you want, and review them
+          here once your generation service is connected.
         </p>
       </header>
       <section>
@@ -161,10 +155,22 @@
         />
       </section>
       <section>
-        <button type="button">Generate Script</button>
+        <label for="quantity">Number of scripts</label>
+        <input
+          id="quantity"
+          type="number"
+          name="quantity"
+          min="1"
+          max="10"
+          value="1"
+        />
+      </section>
+      <section>
+        <button type="button">Generate</button>
       </section>
       <section class="output-panel" aria-live="polite">
-        Output will appear here once script generation is connected.
+        Output will appear here once your script generation service is
+        connected, matching the quantity you select.
       </section>
     </main>
   </body>
