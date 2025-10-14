@@ -1,7 +1,7 @@
 # AutoReel
 
 ## Overview
-AutoReel mines real human-spoken videos, aligns word-level captions, and renders vertical shorts using FFmpeg. Precision first, aesthetics second.
+AutoReel mines real human-spoken videos from the internet, aligns word-level captions, and renders vertical shorts using FFmpeg. Precision first, aesthetics second.
 
 ## Quickstart
 ```bash
