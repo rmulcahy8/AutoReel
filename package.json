@@ -1,0 +1,8 @@
+{
+  "name": "autoreel",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "uvicorn api.server:app --reload --port 3001"
+  }
+}

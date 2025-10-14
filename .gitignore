@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+*.log
+
+# Virtual environments
+.venv/
+.env
+env/
+venv/
+
+# Node
+node_modules/
+.npm/
+
+# Editors
+.vscode/
+.idea/
+.DS_Store
+
+# Caches
+*.cache/
+.cache/
+pytest_cache/
+
+# Data outputs
+/data/raw/
+/data/audio/
+/data/transcripts/
+/data/aligned/
+/data/captions/
+/data/outputs/
+/data/logs/
+/data/tmp/
+
+# Pip
+pip-wheel-metadata/

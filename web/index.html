@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoReel</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>AutoReel</h1>
+        <p>Precision first, aesthetics second.</p>
+      </header>
+      <section class="input-panel">
+        <textarea id="urls" rows="6" placeholder="Paste YouTube URLs, one per line"></textarea>
+        <button id="run">Run Batch</button>
+      </section>
+      <section class="status-panel">
+        <h2>Status</h2>
+        <pre id="console">Waiting for jobs…</pre>
+      </section>
+      <section class="results-panel">
+        <h2>Outputs</h2>
+        <div id="outputs" class="outputs"></div>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
