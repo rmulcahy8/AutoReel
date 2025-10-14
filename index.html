@@ -153,6 +153,39 @@
         box-shadow: 0 8px 16px rgba(106, 131, 255, 0.25);
       }
 
+      .voiceover-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .voiceover-status {
+        font-size: 0.85rem;
+        color: #a1abda;
+      }
+
+      .voiceover-output {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .voiceover-output audio {
+        width: 100%;
+      }
+
+      .download-link {
+        color: #9faeff;
+        text-decoration: none;
+        font-weight: 600;
+        width: fit-content;
+      }
+
+      .download-link:hover {
+        text-decoration: underline;
+      }
+
       .output-panel {
         background: rgba(11, 15, 23, 0.9);
         border: 1px dashed rgba(255, 255, 255, 0.1);
@@ -387,10 +420,186 @@
             const scriptBody = document.createElement("p");
             scriptBody.textContent = item.script;
             article.append(scriptBody);
+
+            const voiceoverControls = document.createElement("div");
+            voiceoverControls.className = "voiceover-controls";
+
+            const voiceoverButton = document.createElement("button");
+            voiceoverButton.type = "button";
+            voiceoverButton.className = "secondary-button";
+            voiceoverButton.textContent = "Create Voiceover";
+
+            const voiceoverStatus = document.createElement("span");
+            voiceoverStatus.className = "voiceover-status";
+            voiceoverStatus.setAttribute("aria-live", "polite");
+
+            voiceoverControls.append(voiceoverButton, voiceoverStatus);
+            article.append(voiceoverControls);
+
+            const voiceoverOutput = document.createElement("div");
+            voiceoverOutput.className = "voiceover-output";
+            article.append(voiceoverOutput);
+
+            let currentAudioUrl = null;
+
+            voiceoverButton.addEventListener("click", () => {
+              if (!item.script) {
+                return;
+              }
+
+              if (currentAudioUrl) {
+                URL.revokeObjectURL(currentAudioUrl);
+                currentAudioUrl = null;
+              }
+
+              voiceoverButton.disabled = true;
+              voiceoverButton.textContent = "Rendering...";
+              voiceoverStatus.textContent = "Converting characters into beeps and boops...";
+
+              try {
+                const audioBlob = createBeepBoopVoiceoverBlob(item.script);
+                currentAudioUrl = URL.createObjectURL(audioBlob);
+
+                voiceoverOutput.innerHTML = "";
+
+                const audioElement = document.createElement("audio");
+                audioElement.controls = true;
+                audioElement.src = currentAudioUrl;
+                voiceoverOutput.append(audioElement);
+
+                const downloadLink = document.createElement("a");
+                downloadLink.href = currentAudioUrl;
+                downloadLink.download = `${slugify(item.title || `script-${index + 1}`)}-voiceover.wav`;
+                downloadLink.className = "download-link";
+                downloadLink.textContent = "Download WAV";
+                voiceoverOutput.append(downloadLink);
+
+                voiceoverStatus.textContent = "Beep-boop audio ready.";
+              } catch (error) {
+                console.error(error);
+                voiceoverStatus.textContent = "Could not create audio.";
+              } finally {
+                voiceoverButton.disabled = false;
+                voiceoverButton.textContent = "Create Voiceover";
+              }
+            });
           }
 
           outputPanel.append(article);
         });
+      }
+
+      function createBeepBoopVoiceoverBlob(scriptText) {
+        const { samples, sampleRate } = generateBeepBoopSamples(scriptText || "");
+        const wavBuffer = encodeWavFromSamples(samples, sampleRate);
+        return new Blob([wavBuffer], { type: "audio/wav" });
+      }
+
+      function generateBeepBoopSamples(text) {
+        const content = typeof text === "string" ? text : String(text ?? "");
+        const sampleRate = 44100;
+        const toneDuration = 0.12;
+        const gapDuration = 0.04;
+        const restDuration = 0.12;
+        const newlineMultiplier = 2;
+        const beepFrequency = 880;
+        const boopFrequency = 523.25;
+
+        const gapSamples = Math.floor(gapDuration * sampleRate);
+        const segments = [];
+
+        for (const char of content) {
+          if (char === "\r") {
+            continue;
+          }
+
+          if (char === "\n") {
+            const silenceSamples = Math.max(1, Math.floor(restDuration * newlineMultiplier * sampleRate));
+            segments.push({ type: "silence", samples: silenceSamples });
+            continue;
+          }
+
+          if (!char.trim()) {
+            const silenceSamples = Math.max(1, Math.floor(restDuration * sampleRate));
+            segments.push({ type: "silence", samples: silenceSamples });
+            continue;
+          }
+
+          const charCode = char.charCodeAt(0) || 0;
+          const frequency = charCode % 2 === 0 ? beepFrequency : boopFrequency;
+          const toneSamples = Math.max(1, Math.floor(toneDuration * sampleRate));
+          segments.push({ type: "tone", freq: frequency, samples: toneSamples });
+
+          if (gapSamples > 0) {
+            segments.push({ type: "silence", samples: gapSamples });
+          }
+        }
+
+        if (!segments.length) {
+          segments.push({ type: "silence", samples: Math.floor(restDuration * sampleRate) || 1 });
+        }
+
+        const totalSamples = segments.reduce((sum, segment) => sum + segment.samples, 0);
+        const samples = new Float32Array(totalSamples);
+        let offset = 0;
+
+        for (const segment of segments) {
+          if (segment.type === "tone") {
+            for (let i = 0; i < segment.samples; i += 1) {
+              const time = i / sampleRate;
+              const envelope = Math.sin((i / segment.samples) * Math.PI);
+              samples[offset + i] = Math.sin(2 * Math.PI * segment.freq * time) * 0.4 * envelope;
+            }
+          }
+
+          offset += segment.samples;
+        }
+
+        return { samples, sampleRate };
+      }
+
+      function encodeWavFromSamples(samples, sampleRate) {
+        const bytesPerSample = 2;
+        const blockAlign = bytesPerSample;
+        const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
+        const view = new DataView(buffer);
+
+        writeString(view, 0, "RIFF");
+        view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+        writeString(view, 8, "WAVE");
+        writeString(view, 12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * blockAlign, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, 16, true);
+        writeString(view, 36, "data");
+        view.setUint32(40, samples.length * bytesPerSample, true);
+
+        let offset = 44;
+        for (let i = 0; i < samples.length; i += 1) {
+          const sample = Math.max(-1, Math.min(1, samples[i]));
+          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+          offset += 2;
+        }
+
+        return buffer;
+      }
+
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i += 1) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      function slugify(text) {
+        return text
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 60) || "script";
       }
 
       function sanitizeJSON(content) {
