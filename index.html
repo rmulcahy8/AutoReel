@@ -186,6 +186,83 @@
         text-decoration: underline;
       }
 
+      .broll-section {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(10, 14, 22, 0.85);
+      }
+
+      .broll-help {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #97a4d9;
+      }
+
+      .broll-video {
+        width: 100%;
+        border-radius: 10px;
+        background: rgba(3, 5, 9, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .broll-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .broll-status {
+        font-size: 0.85rem;
+        color: #818ab5;
+      }
+
+      .broll-library {
+        display: grid;
+        gap: 12px;
+        padding: 20px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(11, 15, 23, 0.85);
+      }
+
+      .broll-library h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #eff1ff;
+      }
+
+      .broll-library-description {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #97a4d9;
+      }
+
+      .broll-library-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .broll-library input[type="file"] {
+        padding: 12px 14px;
+        background: rgba(18, 24, 36, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        color: inherit;
+        font-size: 0.95rem;
+      }
+
+      .broll-library-status {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #818ab5;
+      }
+
       .output-panel {
         background: rgba(11, 15, 23, 0.9);
         border: 1px dashed rgba(255, 255, 255, 0.1);
@@ -331,6 +408,26 @@
           </button>
         </div>
       </section>
+      <section class="broll-library">
+        <h2>B-Roll Library</h2>
+        <p class="broll-library-description">
+          Clips listed in <code>assets/broll/manifest.json</code> load automatically when
+          you serve this page over HTTP. If you're opening the file directly from your
+          desktop and the manifest can't be read, add temporary local clips below.
+        </p>
+        <div class="broll-library-controls">
+          <input
+            id="brollFilePicker"
+            type="file"
+            accept="video/mp4"
+            multiple
+          />
+          <button id="clearBrollButton" type="button" class="secondary-button">
+            Clear Local Clips
+          </button>
+        </div>
+        <p id="brollLibraryStatus" class="broll-library-status" aria-live="polite"></p>
+      </section>
       <section class="output-panel" aria-live="polite">
         <p class="placeholder">
           Output will appear here once your script generation service is
@@ -356,6 +453,246 @@
       const COST_PER_SCRIPT =
         EST_INPUT_TOKENS_PER_SCRIPT * INPUT_PRICE_PER_TOKEN +
         EST_OUTPUT_TOKENS_PER_SCRIPT * OUTPUT_PRICE_PER_TOKEN;
+
+      const brollFileInput = document.getElementById("brollFilePicker");
+      const clearBrollButton = document.getElementById("clearBrollButton");
+      const brollLibraryStatus = document.getElementById("brollLibraryStatus");
+
+      const BROLL_MANIFEST_URL = "assets/broll/manifest.json";
+      const BROLL_MANIFEST_BASE = BROLL_MANIFEST_URL.replace(/manifest\.json$/i, "");
+      const brollStatusListeners = new Set();
+      let BROLL_CLIPS = [];
+      let BROLL_RESOURCE_CLEANUP_HANDLERS = [];
+      let manifestClipObjects = [];
+      let manifestStatus = { loaded: false, error: null };
+      let manualBrollActive = false;
+      let manualSkippedFiles = 0;
+      let currentBrollSource = "manifest";
+
+      function releaseBrollResources() {
+        if (!BROLL_RESOURCE_CLEANUP_HANDLERS.length) {
+          return;
+        }
+        BROLL_RESOURCE_CLEANUP_HANDLERS.forEach((handler) => {
+          try {
+            handler();
+          } catch (error) {
+            console.warn("B-roll cleanup handler failed", error);
+          }
+        });
+        BROLL_RESOURCE_CLEANUP_HANDLERS = [];
+      }
+
+      function notifyBrollListeners() {
+        brollStatusListeners.forEach((listener) => {
+          try {
+            listener(BROLL_CLIPS);
+          } catch (error) {
+            console.error("B-roll status listener failed", error);
+          }
+        });
+      }
+
+      function setBrollClips(clips, { cleanupHandlers = [], source = "manifest" } = {}) {
+        releaseBrollResources();
+        const normalized = Array.isArray(clips)
+          ? clips
+              .map((clip) => {
+                if (!clip || typeof clip.url !== "string") {
+                  return null;
+                }
+                const safeName = typeof clip.name === "string" ? clip.name : "";
+                return { url: clip.url, name: safeName };
+              })
+              .filter(Boolean)
+          : [];
+        BROLL_CLIPS = normalized;
+        BROLL_RESOURCE_CLEANUP_HANDLERS = Array.isArray(cleanupHandlers)
+          ? cleanupHandlers.filter((handler) => typeof handler === "function")
+          : [];
+        currentBrollSource = source;
+        notifyBrollListeners();
+      }
+
+      function normalizeManifestClips(clips) {
+        const normalized = Array.isArray(clips) ? clips : [];
+        return normalized
+          .map((clip) => {
+            if (typeof clip !== "string") {
+              return null;
+            }
+            const trimmed = clip.trim();
+            if (!trimmed || !/\.mp4($|[?#])/i.test(trimmed)) {
+              return null;
+            }
+            if (/^https?:\/\//i.test(trimmed)) {
+              return {
+                url: trimmed,
+                name: trimmed.split("/").pop() || trimmed,
+              };
+            }
+            const normalizedPath = trimmed.startsWith("./") ? trimmed.slice(2) : trimmed;
+            return {
+              url: `${BROLL_MANIFEST_BASE}${normalizedPath}`,
+              name: normalizedPath,
+            };
+          })
+          .filter(Boolean);
+      }
+
+      function applyManifestClips(clips) {
+        manifestClipObjects = Array.isArray(clips) ? clips : [];
+        if (manualBrollActive) {
+          notifyBrollListeners();
+          return;
+        }
+        setBrollClips(manifestClipObjects, { source: "manifest" });
+      }
+
+      function describeError(error) {
+        if (!error) {
+          return "";
+        }
+        if (typeof error === "string") {
+          return error;
+        }
+        if (error instanceof Error) {
+          return error.message;
+        }
+        return String(error);
+      }
+
+      function updateBrollLibraryStatus(clips) {
+        if (!brollLibraryStatus) {
+          return;
+        }
+        if (clearBrollButton) {
+          clearBrollButton.disabled = !manualBrollActive;
+        }
+        const clipCount = Array.isArray(clips) ? clips.length : 0;
+        if (manualBrollActive) {
+          if (!clipCount) {
+            brollLibraryStatus.textContent =
+              "No local MP4 clips are loaded yet. Use the picker above to add footage from your device.";
+          } else {
+            const plural = clipCount === 1 ? "" : "s";
+            let message = `Using ${clipCount} local clip${plural} from your device. They remain available until you refresh this page.`;
+            if (manualSkippedFiles > 0) {
+              message += ` Skipped ${manualSkippedFiles} non-MP4 file${manualSkippedFiles === 1 ? "" : "s"}.`;
+            }
+            brollLibraryStatus.textContent = message;
+          }
+          return;
+        }
+
+        if (clipCount) {
+          const plural = clipCount === 1 ? "" : "s";
+          brollLibraryStatus.textContent = `Loaded ${clipCount} clip${plural} from assets/broll/manifest.json.`;
+          return;
+        }
+
+        if (manifestStatus.error) {
+          const errorMessage = describeError(manifestStatus.error);
+          const suffix = errorMessage ? ` (${errorMessage})` : "";
+          brollLibraryStatus.textContent =
+            `Couldn't load assets/broll/manifest.json${suffix}. Serve the project over HTTP or add local clips above.`;
+          return;
+        }
+
+        brollLibraryStatus.textContent =
+          "No manifest clips detected. Add MP4 filenames to assets/broll/manifest.json or use the local picker.";
+      }
+
+      async function loadBrollManifest() {
+        try {
+          const response = await fetch(BROLL_MANIFEST_URL, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`${response.status} ${response.statusText}`);
+          }
+          const payload = await response.json();
+          const normalized = Array.isArray(payload)
+            ? normalizeManifestClips(payload)
+            : normalizeManifestClips(payload?.clips);
+          manifestStatus = { loaded: true, error: null };
+          applyManifestClips(normalized);
+        } catch (error) {
+          console.warn("Could not load B-roll manifest", error);
+          manifestStatus = { loaded: false, error };
+          manifestClipObjects = [];
+          if (!manualBrollActive) {
+            setBrollClips([], { source: "manifest" });
+          } else {
+            updateBrollLibraryStatus(BROLL_CLIPS);
+          }
+        }
+      }
+
+      brollStatusListeners.add(updateBrollLibraryStatus);
+      updateBrollLibraryStatus(BROLL_CLIPS);
+
+      if (brollFileInput) {
+        brollFileInput.addEventListener("change", () => {
+          const selectedFiles = Array.from(brollFileInput.files || []);
+          if (!selectedFiles.length) {
+            brollFileInput.value = "";
+            return;
+          }
+
+          const mp4Files = selectedFiles.filter((file) => {
+            if (!file) {
+              return false;
+            }
+            if (file.type) {
+              return file.type === "video/mp4";
+            }
+            return file.name.toLowerCase().endsWith(".mp4");
+          });
+
+          manualSkippedFiles = selectedFiles.length - mp4Files.length;
+
+          if (!mp4Files.length) {
+            if (!manualBrollActive) {
+              updateBrollLibraryStatus(BROLL_CLIPS);
+            }
+            if (brollLibraryStatus) {
+              brollLibraryStatus.textContent = "Only MP4 files are supported. Choose different clips.";
+            }
+            brollFileInput.value = "";
+            return;
+          }
+
+          manualBrollActive = true;
+          const cleanupHandlers = [];
+          const clipObjects = mp4Files.map((file) => {
+            const objectUrl = URL.createObjectURL(file);
+            cleanupHandlers.push(() => URL.revokeObjectURL(objectUrl));
+            return {
+              url: objectUrl,
+              name: file.name,
+            };
+          });
+
+          setBrollClips(clipObjects, { cleanupHandlers, source: "manual" });
+          brollFileInput.value = "";
+        });
+      }
+
+      if (clearBrollButton) {
+        clearBrollButton.addEventListener("click", () => {
+          if (!manualBrollActive) {
+            updateBrollLibraryStatus(BROLL_CLIPS);
+            return;
+          }
+          manualBrollActive = false;
+          manualSkippedFiles = 0;
+          if (brollFileInput) {
+            brollFileInput.value = "";
+          }
+          applyManifestClips(manifestClipObjects);
+        });
+      }
+
+      loadBrollManifest();
 
       function formatCurrency(amount, fractionDigits = 2) {
         return new Intl.NumberFormat("en-US", {
@@ -474,6 +811,12 @@
                 downloadLink.textContent = "Download WAV";
                 voiceoverOutput.append(downloadLink);
 
+                createBrollPreviewSection({
+                  container: voiceoverOutput,
+                  audioElement,
+                  scriptTitle: item.title || `Concept ${index + 1}`,
+                });
+
                 voiceoverStatus.textContent = "Beep-boop audio ready.";
               } catch (error) {
                 console.error(error);
@@ -493,6 +836,340 @@
         const { samples, sampleRate } = generateBeepBoopSamples(scriptText || "");
         const wavBuffer = encodeWavFromSamples(samples, sampleRate);
         return new Blob([wavBuffer], { type: "audio/wav" });
+      }
+
+      function waitForAudioDuration(audioElement) {
+        return new Promise((resolve, reject) => {
+          if (Number.isFinite(audioElement.duration) && audioElement.duration > 0) {
+            resolve(audioElement.duration);
+            return;
+          }
+
+          const onLoaded = () => {
+            cleanup();
+            if (Number.isFinite(audioElement.duration) && audioElement.duration > 0) {
+              resolve(audioElement.duration);
+            } else {
+              reject(new Error("Audio duration could not be determined."));
+            }
+          };
+
+          const onError = () => {
+            cleanup();
+            reject(new Error("Audio failed to load."));
+          };
+
+          const cleanup = () => {
+            audioElement.removeEventListener("loadedmetadata", onLoaded);
+            audioElement.removeEventListener("error", onError);
+          };
+
+          audioElement.addEventListener("loadedmetadata", onLoaded, { once: true });
+          audioElement.addEventListener("error", onError, { once: true });
+
+          if (audioElement.readyState >= 1) {
+            onLoaded();
+          } else {
+            audioElement.load();
+          }
+        });
+      }
+
+      function shuffleArray(items) {
+        const array = items.slice();
+        for (let index = array.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [array[index], array[swapIndex]] = [array[swapIndex], array[index]];
+        }
+        return array;
+      }
+
+      function formatSeconds(totalSeconds) {
+        const seconds = Math.max(0, Number.isFinite(totalSeconds) ? totalSeconds : 0);
+        if (seconds < 60) {
+          return `${Math.round(seconds)}s`;
+        }
+        const wholeSeconds = Math.round(seconds);
+        const mins = Math.floor(wholeSeconds / 60);
+        const secs = String(wholeSeconds % 60).padStart(2, "0");
+        return `${mins}:${secs}`;
+      }
+
+      function createBrollPreviewSection({ container, audioElement, scriptTitle }) {
+        const section = document.createElement("div");
+        section.className = "broll-section";
+
+        const heading = document.createElement("h3");
+        heading.textContent = "B-Roll Preview";
+        section.append(heading);
+
+        const help = document.createElement("p");
+        help.className = "broll-help";
+        const safeTitle = typeof scriptTitle === "string" && scriptTitle.trim() ? scriptTitle.trim() : "this script";
+        help.textContent =
+          `Cycles muted B-roll clips stored in assets/broll or loaded from your device to match the runtime of "${safeTitle}".`;
+        section.append(help);
+
+        const video = document.createElement("video");
+        video.className = "broll-video";
+        video.playsInline = true;
+        video.muted = true;
+        video.controls = true;
+        video.preload = "metadata";
+        section.append(video);
+
+        const controls = document.createElement("div");
+        controls.className = "broll-controls";
+
+        const actionButton = document.createElement("button");
+        actionButton.type = "button";
+        actionButton.className = "secondary-button";
+        actionButton.textContent = "Start B-Roll Cycle";
+
+        const status = document.createElement("span");
+        status.className = "broll-status";
+        controls.append(actionButton, status);
+        section.append(controls);
+
+        container.append(section);
+
+        const handleClipUpdate = (clips) => {
+          if (cycleActive) {
+            return;
+          }
+          const clipCount = Array.isArray(clips) ? clips.length : 0;
+          actionButton.disabled = clipCount === 0;
+          if (clipCount) {
+            const plural = clipCount === 1 ? "" : "s";
+            const sourceLabel = currentBrollSource === "manual" ? "from your device" : "from assets/broll";
+            status.textContent = `${clipCount} clip${plural} ready (${sourceLabel}).`;
+          } else if (manualBrollActive) {
+            status.textContent = "No playable clips in your local selection. Pick MP4 files above.";
+          } else if (manifestStatus.error) {
+            status.textContent = "B-roll manifest unavailable. Serve over HTTP or add local clips above.";
+          } else {
+            status.textContent = "Add MP4 files to assets/broll or use the picker above to enable the preview.";
+          }
+        };
+
+        brollStatusListeners.add(handleClipUpdate);
+        handleClipUpdate(BROLL_CLIPS);
+
+        const observer = new MutationObserver(() => {
+          if (!section.isConnected) {
+            brollStatusListeners.delete(handleClipUpdate);
+            observer.disconnect();
+          }
+        });
+
+        observer.observe(container, { childList: true });
+
+        let currentPlaylist = [];
+        let currentClipIndex = 0;
+        let cycleActive = false;
+        let plannedDurationMs = 0;
+        let cycleStartTimestamp = 0;
+        let progressTimerId = null;
+        let audioEndedHandler = null;
+        let videoEndedHandler = null;
+        let videoErrorHandler = null;
+
+        function stopCycle(reason = "stopped") {
+          if (!cycleActive) {
+            return;
+          }
+
+          cycleActive = false;
+          if (progressTimerId) {
+            clearInterval(progressTimerId);
+            progressTimerId = null;
+          }
+
+          if (audioEndedHandler) {
+            audioElement.removeEventListener("ended", audioEndedHandler);
+            audioEndedHandler = null;
+          }
+
+          if (videoEndedHandler) {
+            video.removeEventListener("ended", videoEndedHandler);
+            videoEndedHandler = null;
+          }
+
+          if (videoErrorHandler) {
+            video.removeEventListener("error", videoErrorHandler);
+            videoErrorHandler = null;
+          }
+
+          video.pause();
+
+          if (reason !== "completed" && !audioElement.paused) {
+            audioElement.pause();
+          }
+
+          actionButton.textContent = "Restart B-Roll Cycle";
+          actionButton.disabled = false;
+
+          if (reason === "completed") {
+            status.textContent = `Preview complete after ${formatSeconds(plannedDurationMs / 1000)}.`;
+          } else if (reason === "empty") {
+            status.textContent =
+              "No playable B-roll clips were found. Add MP4 files to assets/broll or load local clips above.";
+          } else if (reason === "error") {
+            status.textContent = "A clip failed to load. Check your video files and try again.";
+          } else {
+            status.textContent = "Preview stopped.";
+          }
+
+          actionButton.disabled = BROLL_CLIPS.length === 0;
+        }
+
+        function pickNextClip() {
+          if (!currentPlaylist.length) {
+            currentPlaylist = shuffleArray(BROLL_CLIPS);
+            currentClipIndex = 0;
+          }
+          if (!currentPlaylist.length) {
+            return null;
+          }
+
+          const clipCount = currentPlaylist.length;
+          let attempts = 0;
+
+          while (attempts < clipCount) {
+            if (currentClipIndex >= currentPlaylist.length) {
+              currentPlaylist = shuffleArray(BROLL_CLIPS);
+              currentClipIndex = 0;
+              if (!currentPlaylist.length) {
+                return null;
+              }
+            }
+
+            const clip = currentPlaylist[currentClipIndex];
+            currentClipIndex += 1;
+            if (clip && typeof clip.url === "string" && clip.url) {
+              return clip;
+            }
+
+            attempts += 1;
+          }
+
+          return null;
+        }
+
+        function scheduleNextClip() {
+          if (!cycleActive) {
+            return;
+          }
+
+          const clip = pickNextClip();
+          if (!clip) {
+            stopCycle("empty");
+            return;
+          }
+
+          video.pause();
+          video.currentTime = 0;
+          video.src = clip.url;
+          video.load();
+
+          const playPromise = video.play();
+          if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(() => {
+              stopCycle("error");
+            });
+          }
+        }
+
+        function handleVideoEnded() {
+          const elapsedMs = performance.now() - cycleStartTimestamp;
+          if (elapsedMs >= plannedDurationMs) {
+            stopCycle("completed");
+          } else {
+            scheduleNextClip();
+          }
+        }
+
+        function handleVideoError() {
+          const elapsedMs = performance.now() - cycleStartTimestamp;
+          if (elapsedMs >= plannedDurationMs) {
+            stopCycle("completed");
+            return;
+          }
+
+          if (currentPlaylist.length <= 1 && BROLL_CLIPS.length <= 1) {
+            stopCycle("error");
+          } else {
+            scheduleNextClip();
+          }
+        }
+
+        actionButton.addEventListener("click", async () => {
+          if (!BROLL_CLIPS.length) {
+            status.textContent = "Add MP4 clips to assets/broll or load them above to enable this preview.";
+            return;
+          }
+
+          if (cycleActive) {
+            audioElement.pause();
+            stopCycle("stopped");
+            return;
+          }
+
+          actionButton.disabled = true;
+          status.textContent = "Preparing preview...";
+
+          let durationSeconds;
+          try {
+            durationSeconds = await waitForAudioDuration(audioElement);
+          } catch (error) {
+            console.error(error);
+            status.textContent = "The voiceover audio is not ready yet. Try rendering it again.";
+            actionButton.disabled = false;
+            return;
+          }
+
+          cycleActive = true;
+          plannedDurationMs = durationSeconds * 1000;
+          cycleStartTimestamp = performance.now();
+          currentPlaylist = shuffleArray(BROLL_CLIPS);
+          currentClipIndex = 0;
+
+          audioElement.currentTime = 0;
+          try {
+            await audioElement.play();
+          } catch (error) {
+            console.warn("Audio could not autoplay. The user may need to press play manually.", error);
+          }
+
+          videoEndedHandler = handleVideoEnded;
+          videoErrorHandler = handleVideoError;
+          audioEndedHandler = () => stopCycle("completed");
+
+          video.addEventListener("ended", videoEndedHandler);
+          video.addEventListener("error", videoErrorHandler);
+          audioElement.addEventListener("ended", audioEndedHandler, { once: true });
+
+          progressTimerId = setInterval(() => {
+            if (!cycleActive) {
+              return;
+            }
+            const elapsedMs = performance.now() - cycleStartTimestamp;
+            if (elapsedMs >= plannedDurationMs) {
+              stopCycle("completed");
+            } else {
+              const remainingSeconds = Math.max(0, (plannedDurationMs - elapsedMs) / 1000);
+              status.textContent = `Cycling clips... ${formatSeconds(remainingSeconds)} remaining.`;
+            }
+          }, 500);
+
+          actionButton.textContent = "Stop B-Roll Cycle";
+          actionButton.disabled = false;
+
+          status.textContent = `Mixing clips for ${formatSeconds(durationSeconds)} of audio.`;
+          scheduleNextClip();
+        });
+
+        return section;
       }
 
       function generateBeepBoopSamples(text) {

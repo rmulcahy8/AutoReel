@@ -55,3 +55,15 @@ sound per character in the script. The UI embeds an audio player and provides a
 - Wire up the "Generate Script" button to your backend.
 - Feed the output panel with generated script text.
 - Expand the UI with voice, video, and upload workflows as automation features mature.
+
+## Add B-roll preview clips
+
+Place `.mp4` files inside `assets/broll/` and list them in
+`assets/broll/manifest.json`. The UI loads that manifest at runtime and cycles
+through the clips to match the length of each generated voiceover, giving you a
+quick way to visualize how the narration pairs with your stock footage. If
+you open `index.html` directly from disk (using a `file://` URL) and the
+manifest can't be fetched, scroll to the **B-Roll Library** section in the UI
+and add clips with the built-in file picker. Those selections stay available
+until you refresh the page, making it easy to test without running a local
+server.
