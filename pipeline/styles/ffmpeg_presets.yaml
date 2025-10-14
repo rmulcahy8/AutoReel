@@ -1,6 +1,4 @@
 # Named FFmpeg filtergraph snippets used by the renderer.
-# Precision first, aesthetics second.
-
 presets:
   vertical_crop:
     description: "Resize to 1920 height then crop center 1080x1920"
