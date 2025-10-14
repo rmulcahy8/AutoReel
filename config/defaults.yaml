@@ -1,0 +1,37 @@
+paths:
+  data: "./data"
+  raw: "./data/raw"
+  audio: "./data/audio"
+  transcripts: "./data/transcripts"
+  aligned: "./data/aligned"
+  captions: "./data/captions"
+  outputs: "./data/outputs"
+  logs: "./data/logs"
+  tmp: "./data/tmp"
+
+asr:
+  whisper_model: "small"
+  device: "auto"
+  sample_rate: 16000
+  lang: "en"
+
+alignment:
+  min_gap_s: 0.30
+  pad_end_s: 0.04
+
+render:
+  out_w: 1080
+  out_h: 1920
+  fps: 30
+  vcodec: "h264_nvenc"
+  vbitrate: "8M"
+  abitrate: "192k"
+  lufs_target: -14
+  crop_strategy: "center"
+
+style:
+  ass_template: "pipeline/styles/captions.ass.template"
+  font_family: "Montserrat"
+  font_size: 64
+  outline: 4
+  margin_v: 120

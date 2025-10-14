@@ -1,0 +1,16 @@
+# Named FFmpeg filtergraph snippets used by the renderer.
+# Precision first, aesthetics second.
+
+presets:
+  vertical_crop:
+    description: "Resize to 1920 height then crop center 1080x1920"
+    filter: "scale=-2:1920,crop=1080:1920"
+  loudnorm_speech:
+    description: "ITU-R BS.1770-4 loudness normalisation"
+    filter: "loudnorm=I=-14:TP=-1.5:LRA=11"
+  color_pop:
+    description: "Slight contrast/saturation boost with sharpen"
+    filter: "eq=contrast=1.12:saturation=1.2,unsharp=5:5:0.8"
+  sidechain_ducking:
+    description: "Sidechain compress background music under voice"
+    filter: "[voice]asplit[v1][sc];[music][sc]sidechaincompress=threshold=-18dB:ratio=6:attack=40:release=2000[out_music];[v1]anullsink"

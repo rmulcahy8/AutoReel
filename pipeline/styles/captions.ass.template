@@ -1,0 +1,12 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV
+Style: Karo,{{FONT_FAMILY}},{{FONT_SIZE}},&H00FFFFFF,&H0033FFCC,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,{{OUTLINE}},0,2,60,60,{{MARGIN_V}}
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+{{DIALOGUE_LINES}}
