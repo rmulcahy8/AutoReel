@@ -1,6 +1,6 @@
 """Utility helpers for the AutoReel pipeline.
 
-Precision first, aesthetics second. Automate the boring parts. Fail closed, log everything.
+Automate the boring parts. Fail closed, log everything.
 """
 from __future__ import annotations
 
