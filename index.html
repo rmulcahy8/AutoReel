@@ -241,6 +241,53 @@
         letter-spacing: 0.04em;
       }
 
+      .broll-section {
+        margin-top: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(22, 30, 48, 0.7);
+        display: grid;
+        gap: 12px;
+      }
+
+      .broll-section h3 {
+        color: #e6ecff;
+      }
+
+      .broll-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      }
+
+      .broll-card {
+        display: grid;
+        gap: 8px;
+        background: rgba(11, 15, 23, 0.8);
+        border-radius: 10px;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .broll-card video {
+        width: 100%;
+        border-radius: 8px;
+        display: block;
+      }
+
+      .broll-card .filename {
+        font-size: 0.8rem;
+        color: #bac6ff;
+        word-break: break-word;
+      }
+
+      .broll-message {
+        margin: 0;
+        color: #9aa9df;
+        font-size: 0.9rem;
+      }
+
       .output-panel p {
         margin: 0;
         color: inherit;
@@ -348,6 +395,7 @@
       const costDisplay = document.getElementById("costDisplay");
 
       const MODEL_NAME = "gpt-4.1-nano";
+      const BROLL_BASE_PATH = "assets/broll/";
       const INPUT_PRICE_PER_TOKEN = 0.2 / 1_000_000;
       const OUTPUT_PRICE_PER_TOKEN = 0.8 / 1_000_000;
       const EST_INPUT_TOKENS_PER_SCRIPT = 150;
@@ -390,6 +438,7 @@
 
       function renderScripts(scripts, options = {}) {
         outputPanel.innerHTML = "";
+        brollSectionContents.clear();
         if (options.prefaceMessage) {
           const preface = document.createElement("p");
           preface.className = "output-preface";
@@ -485,7 +534,146 @@
             });
           }
 
+          const brollSection = createBrollSection();
+          article.append(brollSection);
+
           outputPanel.append(article);
+        });
+      }
+
+      const brollState = {
+        status: "idle",
+        clips: [],
+        errorMessage: "",
+      };
+
+      const brollSectionContents = new Set();
+
+      function encodeAssetPath(filename) {
+        return filename
+          .split("/")
+          .map((segment) => encodeURIComponent(segment))
+          .join("/");
+      }
+
+      function renderBrollContent(container) {
+        container.innerHTML = "";
+
+        if (brollState.status === "idle" || brollState.status === "loading") {
+          const message = document.createElement("p");
+          message.className = "broll-message";
+          message.textContent = "Loading B-roll manifest...";
+          container.append(message);
+          return;
+        }
+
+        if (brollState.status === "error") {
+          const message = document.createElement("p");
+          message.className = "broll-message";
+          message.textContent = brollState.errorMessage || "Unable to load B-roll manifest.";
+          container.append(message);
+          return;
+        }
+
+        if (!brollState.clips.length) {
+          const message = document.createElement("p");
+          message.className = "broll-message";
+          message.textContent = "No B-roll assets available yet.";
+          container.append(message);
+          return;
+        }
+
+        const grid = document.createElement("div");
+        grid.className = "broll-grid";
+
+        brollState.clips.forEach((clip) => {
+          const card = document.createElement("div");
+          card.className = "broll-card";
+
+          const video = document.createElement("video");
+          video.controls = true;
+          video.loop = true;
+          video.muted = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          video.src = `${BROLL_BASE_PATH}${encodeAssetPath(clip)}`;
+          video.setAttribute("aria-label", `Preview for ${clip}`);
+          card.append(video);
+
+          const filename = document.createElement("span");
+          filename.className = "filename";
+          filename.textContent = clip;
+          card.append(filename);
+
+          const downloadLink = document.createElement("a");
+          downloadLink.href = `${BROLL_BASE_PATH}${encodeAssetPath(clip)}`;
+          downloadLink.download = clip;
+          downloadLink.className = "download-link";
+          downloadLink.textContent = "Download";
+          card.append(downloadLink);
+
+          grid.append(card);
+        });
+
+        container.append(grid);
+      }
+
+      function createBrollSection() {
+        const section = document.createElement("section");
+        section.className = "broll-section";
+
+        const heading = document.createElement("h3");
+        heading.textContent = "B-roll Library";
+        section.append(heading);
+
+        const content = document.createElement("div");
+        section.append(content);
+        brollSectionContents.add(content);
+        renderBrollContent(content);
+
+        if (brollState.status === "idle") {
+          void fetchBrollManifest();
+        }
+
+        return section;
+      }
+
+      async function fetchBrollManifest() {
+        if (brollState.status === "loading" || brollState.status === "ready") {
+          return;
+        }
+
+        brollState.status = "loading";
+        updateAllBrollSections();
+
+        try {
+          const response = await fetch(`${BROLL_BASE_PATH}manifest.json`, {
+            headers: { "Cache-Control": "no-cache" },
+          });
+
+          if (!response.ok) {
+            throw new Error(response.statusText || "Request failed");
+          }
+
+          const manifest = await response.json();
+          const clips = Array.isArray(manifest?.clips) ? manifest.clips : [];
+
+          brollState.clips = clips.filter((clip) => typeof clip === "string" && clip.trim());
+          brollState.status = "ready";
+          brollState.errorMessage = "";
+        } catch (error) {
+          console.error(error);
+          brollState.status = "error";
+          brollState.errorMessage =
+            error instanceof Error ? error.message : "Could not load B-roll manifest.";
+        }
+
+        updateAllBrollSections();
+      }
+
+      function updateAllBrollSections() {
+        brollSectionContents.forEach((content) => {
+          renderBrollContent(content);
         });
       }
 
@@ -730,6 +918,8 @@
 
       quantityInput.addEventListener("input", updateCostEstimate);
       updateCostEstimate();
+
+      fetchBrollManifest();
 
       topicInput.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
