@@ -43,6 +43,7 @@ Outputs land in `data/outputs/` alongside logs in `data/logs/`.
 ## Requirements
 - `ffmpeg` available on `PATH`.
 - Python 3.10+ recommended.
+- `yt-dlp` version `2024.8.6` or newer (but < `2025.0`).
 - GPU optional. If NVENC is absent, the renderer falls back to `libx264`.
 
 ## Troubleshooting
