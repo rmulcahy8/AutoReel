@@ -11,6 +11,15 @@ make init
 make demo   # produces at least one mp4 in data/outputs/
 ```
 
+## Step 1: Fetch long-form source material
+Use the lightweight helper script to grab a long-form video of a requested speaker. The video is stored in `input/longform/`.
+
+```bash
+python get_video.py --name "Andrew Huberman"
+```
+
+The script prints which YouTube video was selected and the local file path once the download finishes.
+
 ## Detailed usage
 - Collect URLs in `examples/urls.txt` (one per line).
 - Run the batch pipeline:
