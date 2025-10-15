@@ -35,6 +35,7 @@ pytest_cache/
 /data/outputs/
 /data/logs/
 /data/tmp/
+/input/longform/
 
 # Pip
 pip-wheel-metadata/
