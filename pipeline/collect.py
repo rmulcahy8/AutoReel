@@ -25,6 +25,12 @@ def run_command_capture(cmd: List[str], logger) -> str:
     try:
         output = check_output(cmd, text=True)
         return output
+    except FileNotFoundError as exc:
+        missing = cmd[0]
+        raise PipelineError(
+            f"Required command not found: {missing}. "
+            "Ensure the dependency is installed and available on PATH."
+        ) from exc
     except CalledProcessError as exc:
         raise PipelineError(f"Command failed: {' '.join(cmd)}") from exc
 
