@@ -1,19 +1,27 @@
-PY=python
+SYSTEM_PY ?= python
+VENV_PY := .venv/bin/python
 
-.PHONY: init batch demo api lint
+.PHONY: init batch demo api lint check-venv
 
 init:
-	$(PY) -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
+	$(SYSTEM_PY) -m venv .venv
+	$(VENV_PY) -m pip install -r requirements.txt
 
-batch:
-	$(PY) -m pipeline.batch --urls-file examples/urls.txt
+check-venv:
+	@if [ ! -x "$(VENV_PY)" ]; then \
+		echo "❌ Virtualenv Python not found at $(VENV_PY). Run 'make init' first."; \
+		exit 1; \
+	fi
 
-demo:
+batch: check-venv
+	$(VENV_PY) -m pipeline.batch --urls-file examples/urls.txt
+
+demo: check-venv
 	@echo "https://www.youtube.com/watch?v=dQw4w9WgXcQ" > examples/urls.txt
-	$(PY) -m pipeline.batch --urls-file examples/urls.txt --max 1
+	$(VENV_PY) -m pipeline.batch --urls-file examples/urls.txt --max 1
 
-api:
-	uvicorn api.server:app --reload --port 3001
+api: check-venv
+	$(VENV_PY) -m uvicorn api.server:app --reload --port 3001
 
 lint:
 	@if grep -nE '^[ ]+\S' Makefile; then \
