@@ -8,7 +8,7 @@ AutoReel mines real human-spoken videos from the internet, aligns word-level cap
 git clone <repo>
 cd AutoReel
 make init
-make demo   # produces at least one mp4 in data/outputs/
+make demo   # produces an example video in data/outputs/
 ```
 
 The `make demo` target seeds `examples/urls.txt` with a sample YouTube link
