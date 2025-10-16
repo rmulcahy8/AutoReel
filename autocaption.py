@@ -13,10 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - imported lazily in functions
     import yt_dlp  # type: ignore
-    import moviepy.editor as moviepy_editor  # type: ignore
     import whisper_timestamped as whisper  # type: ignore
-
-    VideoFileClip = moviepy_editor.VideoFileClip
 
 
 def download_video(url: str, download_dir: str) -> str:
@@ -37,17 +34,28 @@ def download_video(url: str, download_dir: str) -> str:
     return video_path
 
 
-def extract_audio(video_path: str, audio_path: str) -> str:
+def extract_audio(
+    video_path: str,
+    audio_path: str,
+    ffmpeg_binary: str = "ffmpeg",
+) -> str:
     """Extract audio from the downloaded video and return the audio path."""
-    import moviepy.editor as moviepy_editor
 
-    VideoFileClip = moviepy_editor.VideoFileClip
-
-    clip = VideoFileClip(video_path)
-    try:
-        clip.audio.write_audiofile(audio_path, logger=None)
-    finally:
-        clip.close()
+    command = [
+        ffmpeg_binary,
+        "-y",
+        "-i",
+        video_path,
+        "-vn",
+        "-acodec",
+        "pcm_s16le",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
+        audio_path,
+    ]
+    subprocess.run(command, check=True)
     return audio_path
 
 
@@ -158,7 +166,7 @@ def generate_captions(
     with tempfile.TemporaryDirectory() as tmpdir:
         video_path = download_video(url, tmpdir)
         audio_path = os.path.join(tmpdir, "audio.wav")
-        extract_audio(video_path, audio_path)
+        extract_audio(video_path, audio_path, ffmpeg_binary=ffmpeg_binary)
         words = transcribe_audio(audio_path, model_name=model_name, language=language, device=device)
         subtitle_path = os.path.join(tmpdir, "captions.srt")
         write_srt(words, subtitle_path)

@@ -39,7 +39,11 @@ class GenerateCaptionsTest(TestCase):
 
             self.assertEqual(resolved_output, str(output_path.resolve()))
             download_mock.assert_called_once()
-            extract_mock.assert_called_once()
+            extract_mock.assert_called_once_with(
+                str(temp_dir / "video.mp4"),
+                str(temp_dir / "audio.wav"),
+                ffmpeg_binary="ffmpeg",
+            )
             transcribe_mock.assert_called_once()
             write_mock.assert_called_once()
             burn_mock.assert_called_once_with(
