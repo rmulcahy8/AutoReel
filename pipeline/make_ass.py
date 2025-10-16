@@ -32,19 +32,24 @@ def render_dialogue(
             continue
         start = float(word.get("s", 0.0))
         if index + 1 < len(words):
-            next_start = float(words[index + 1].get("s", start))
-            duration = word_to_k_tag(start, next_start)
+            next_word = words[index + 1]
+            next_start = next_word.get("s")
+            if next_start is not None:
+                target_end = float(next_start)
+            else:
+                target_end = float(next_word.get("e", start))
+            target_end = max(target_end, start)
         else:
-            end = float(word.get("e", start))
-            target_end = end + pad_end
+            base_end = float(word.get("e", start))
+            target_end = max(base_end, start) + pad_end
             if next_line_start is not None:
                 next_line_start = float(next_line_start)
-                if next_line_start < end:
-                    target_end = end
+                if next_line_start < base_end:
+                    target_end = max(base_end, start)
                 else:
                     target_end = min(target_end, next_line_start)
-            duration = word_to_k_tag(start, target_end)
             final_target_end = target_end
+        duration = word_to_k_tag(start, target_end)
         tokens.append(f"{{\\k{duration}}}{token}")
     return " ".join(tokens), final_target_end
 
