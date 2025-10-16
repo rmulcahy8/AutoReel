@@ -4,11 +4,13 @@ Automate the boring parts. Fail closed, log everything.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import os
 import re
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -176,10 +178,31 @@ def log_exception(logger: logging.Logger, error: Exception) -> None:
     logger.debug("", exc_info=True)
 
 
+def build_yt_dlp_command(*args: str) -> List[str]:
+    """Return a yt-dlp command that works even when the shim script is missing."""
+
+    from shutil import which
+
+    for candidate in ("yt-dlp", "yt_dlp"):
+        if which(candidate):
+            return [candidate, *args]
+
+    try:
+        importlib.import_module("yt_dlp")
+    except ImportError as exc:  # pragma: no cover - defensive guard
+        raise PipelineError(
+            "yt-dlp is required but was not found. "
+            "Run 'make init' to install the project's dependencies."
+        ) from exc
+
+    return [sys.executable, "-m", "yt_dlp", *args]
+
+
 __all__ = [
     "Config",
     "PipelineError",
     "append_jsonl",
+    "build_yt_dlp_command",
     "build_logger",
     "detect_device",
     "ensure_directory",

@@ -12,6 +12,7 @@ from .utils import (
     Config,
     PipelineError,
     build_logger,
+    build_yt_dlp_command,
     detect_device,
     resolve_path,
     run_command,
@@ -26,14 +27,13 @@ def download_audio(video_id: str, url: str, audio_dir: Path, logger) -> Path:
         logger.info("Audio already downloaded for %s", video_id)
         return m4a_path
     source = url or f"https://www.youtube.com/watch?v={video_id}"
-    cmd = [
-        "yt-dlp",
+    cmd = build_yt_dlp_command(
         "-f",
         "bestaudio",
         "-o",
         str(m4a_path),
         source,
-    ]
+    )
     run_command(cmd, logger)
     return m4a_path
 
