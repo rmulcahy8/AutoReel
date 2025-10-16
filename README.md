@@ -50,6 +50,3 @@ Outputs land in `data/outputs/` alongside logs in `data/logs/`.
 - YouTube transcript fetch fails → pipeline falls back to local Whisper transcription.
 - WhisperX first run downloads models; rerun the batch if interrupted during downloads.
 - If captions feel late, increase `alignment.pad_end_s` in `config/defaults.yaml`. For excessive line breaks, tweak `alignment.min_gap_s`.
-
-## Legal note
-Use downloaded media transformatively (commentary, criticism, education). Respect platform terms of service and avoid redistributing full original videos.
