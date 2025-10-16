@@ -44,7 +44,7 @@ Outputs land in `data/outputs/` alongside logs in `data/logs/`.
 - `ffmpeg` available on `PATH`.
 - Python 3.10+ recommended.
 - `yt-dlp` version `2024.8.6` or newer (but < `2025.0`).
-- GPU optional. If NVENC is absent, the renderer falls back to `libx264`.
+- GPU optional. NVENC encoders are auto-detected at runtime; when missing the renderer falls back to `libx264`.
 
 ## Troubleshooting
 - YouTube transcript fetch fails → pipeline falls back to local Whisper transcription.

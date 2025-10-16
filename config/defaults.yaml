@@ -23,6 +23,7 @@ render:
   out_w: 1080
   out_h: 1920
   fps: 30
+  # Auto-detects NVENC; falls back to libx264 when the encoder is unavailable.
   vcodec: "h264_nvenc"
   vbitrate: "8M"
   abitrate: "192k"

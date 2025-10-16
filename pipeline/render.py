@@ -14,6 +14,7 @@ from .utils import (
     build_logger,
     build_yt_dlp_command,
     ensure_directory,
+    is_ffmpeg_encoder_available,
     resolve_path,
     run_command,
 )
@@ -105,6 +106,12 @@ def render(video_id: str, config: Config, logger, music: Optional[Path] = None) 
     af = build_audio_filters(config, presets, music_path=music)
 
     vcodec = config.get("render", "vcodec", default="libx264")
+    if vcodec and not is_ffmpeg_encoder_available(vcodec) and vcodec.endswith("_nvenc"):
+        logger.warning(
+            "Requested NVENC encoder '%s' not available; falling back to libx264.",
+            vcodec,
+        )
+        vcodec = "libx264"
     fps = str(config.get("render", "fps", default=30))
     vbitrate = config.get("render", "vbitrate", default="8M")
     abitrate = config.get("render", "abitrate", default="192k")
