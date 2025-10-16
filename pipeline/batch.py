@@ -56,6 +56,7 @@ def orchestrate(urls_file: Path, args, logger) -> None:
     transcripts_dir = resolve_path(data_paths.get("transcripts", "data/transcripts"))
     aligned_dir = resolve_path(data_paths.get("aligned", "data/aligned"))
     outputs_dir = resolve_path(data_paths.get("outputs", "data/outputs"))
+    raw_dir = resolve_path(data_paths.get("raw", "data/raw"))
 
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -69,7 +70,7 @@ def orchestrate(urls_file: Path, args, logger) -> None:
         video_id = entry["video_id"]
         logger.info("Processing %s", video_id)
         url = entry.get("url")
-        download_audio(video_id, url, audio_dir, logger)
+        download_audio(video_id, url, audio_dir, raw_dir, logger)
         wav_path = convert_to_wav(audio_dir / f"{video_id}.m4a", config.get("asr", "sample_rate", default=16000), audio_dir, logger)
 
         ret = align_words.main([

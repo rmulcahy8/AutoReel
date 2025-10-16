@@ -12,28 +12,32 @@ from .utils import (
     Config,
     PipelineError,
     build_logger,
-    build_yt_dlp_command,
     detect_device,
+    ensure_video,
     resolve_path,
     run_command,
     write_json,
 )
 
 
-def download_audio(video_id: str, url: str, audio_dir: Path, logger) -> Path:
+def download_audio(video_id: str, url: str, audio_dir: Path, raw_dir: Path, logger) -> Path:
     audio_dir.mkdir(parents=True, exist_ok=True)
     m4a_path = audio_dir / f"{video_id}.m4a"
     if m4a_path.exists():
         logger.info("Audio already downloaded for %s", video_id)
         return m4a_path
-    source = url or f"https://www.youtube.com/watch?v={video_id}"
-    cmd = build_yt_dlp_command(
-        "-f",
-        "bestaudio",
-        "-o",
+
+    mp4_path = ensure_video(video_id, raw_dir, logger, url=url)
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(mp4_path),
+        "-vn",
+        "-acodec",
+        "copy",
         str(m4a_path),
-        source,
-    )
+    ]
     run_command(cmd, logger)
     return m4a_path
 
@@ -100,6 +104,7 @@ def main(argv: List[str] | None = None) -> int:
             return 0
 
         audio_dir = resolve_path(data_paths.get("audio", "data/audio"))
+        raw_dir = resolve_path(data_paths.get("raw", "data/raw"))
         transcripts_dir = resolve_path(data_paths.get("transcripts", "data/transcripts"))
         sample_rate = config.get("asr", "sample_rate", default=16000)
         model = args.model or config.get("asr", "whisper_model", default="small")
@@ -107,7 +112,7 @@ def main(argv: List[str] | None = None) -> int:
 
         for video_id in tqdm(pending, desc="Transcribing"):
             url = f"https://www.youtube.com/watch?v={video_id}"
-            m4a_path = download_audio(video_id, url, audio_dir, logger)
+            m4a_path = download_audio(video_id, url, audio_dir, raw_dir, logger)
             wav_path = convert_to_wav(m4a_path, sample_rate, audio_dir, logger)
             run_whisper(wav_path, model, device, transcripts_dir, logger)
     except Exception as exc:

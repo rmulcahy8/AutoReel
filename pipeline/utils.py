@@ -107,6 +107,26 @@ def ensure_directory(path: Path) -> Path:
     return path
 
 
+def ensure_video(video_id: str, raw_dir: Path, logger, url: Optional[str] = None) -> Path:
+    """Download the source MP4 for ``video_id`` if it is missing."""
+
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    mp4_path = raw_dir / f"{video_id}.mp4"
+    if mp4_path.exists():
+        return mp4_path
+
+    source = url or f"https://www.youtube.com/watch?v={video_id}"
+    cmd = build_yt_dlp_command(
+        "-f",
+        "bestvideo+bestaudio/best",
+        "-o",
+        str(mp4_path),
+        source,
+    )
+    run_command(cmd, logger)
+    return mp4_path
+
+
 def write_json(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
@@ -223,6 +243,7 @@ __all__ = [
     "build_logger",
     "detect_device",
     "ensure_directory",
+    "ensure_video",
     "extract_video_id",
     "list_files",
     "load_jsonl",

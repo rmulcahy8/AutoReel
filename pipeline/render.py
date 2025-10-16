@@ -12,8 +12,8 @@ from .utils import (
     Config,
     PipelineError,
     build_logger,
-    build_yt_dlp_command,
     ensure_directory,
+    ensure_video,
     is_ffmpeg_encoder_available,
     resolve_path,
     run_command,
@@ -37,21 +37,6 @@ def load_presets(path: Path) -> Dict[str, Dict[str, str]]:
         return {}
     data = yaml.safe_load(path.read_text()) or {}
     return data.get("presets", {})
-
-
-def ensure_video(video_id: str, raw_dir: Path, logger) -> Path:
-    mp4_path = raw_dir / f"{video_id}.mp4"
-    if mp4_path.exists():
-        return mp4_path
-    cmd = build_yt_dlp_command(
-        "-f",
-        "bestvideo+bestaudio/best",
-        "-o",
-        str(mp4_path),
-        f"https://www.youtube.com/watch?v={video_id}",
-    )
-    run_command(cmd, logger)
-    return mp4_path
 
 
 def load_roi_crop(roi_path: Path) -> Optional[str]:
