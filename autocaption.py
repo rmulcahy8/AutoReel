@@ -13,8 +13,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - imported lazily in functions
     import yt_dlp  # type: ignore
-    from moviepy.editor import VideoFileClip  # type: ignore
+    from moviepy import editor as moviepy_editor  # type: ignore
     import whisper_timestamped as whisper  # type: ignore
+
+    VideoFileClip = moviepy_editor.VideoFileClip
 
 
 def download_video(url: str, download_dir: str) -> str:
@@ -37,7 +39,9 @@ def download_video(url: str, download_dir: str) -> str:
 
 def extract_audio(video_path: str, audio_path: str) -> str:
     """Extract audio from the downloaded video and return the audio path."""
-    from moviepy.editor import VideoFileClip
+    from moviepy import editor as moviepy_editor
+
+    VideoFileClip = moviepy_editor.VideoFileClip
 
     clip = VideoFileClip(video_path)
     try:
