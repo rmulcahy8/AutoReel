@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import math
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -16,32 +15,61 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours}:{minutes:02d}:{secs:06.3f}"
 
 
-def word_to_k_tag(start: float, end: float, pad_end: float) -> int:
-    duration = max((end + pad_end) - start, 0.01)
+def word_to_k_tag(start: float, end: float) -> int:
+    duration = max(end - start, 0.01)
     centiseconds = max(int(round(duration * 100)), 1)
     return centiseconds
 
 
-def render_dialogue(words: List[Dict[str, float]], pad_end: float) -> str:
+def render_dialogue(
+    words: List[Dict[str, float]], pad_end: float, next_line_start: float | None = None
+) -> tuple[str, float]:
     tokens = []
-    for word in words:
+    final_target_end = float(words[-1].get("e", words[-1].get("s", 0.0))) if words else 0.0
+    for index, word in enumerate(words):
         token = word.get("w", "").strip()
         if not token:
             continue
-        duration = word_to_k_tag(word.get("s", 0.0), word.get("e", 0.0), pad_end)
+        start = float(word.get("s", 0.0))
+        current_end = float(word.get("e", start))
+        if index + 1 < len(words):
+            next_start = float(words[index + 1].get("s", current_end))
+            target_end = max(current_end, next_start)
+        else:
+            target_end = current_end + pad_end
+            if next_line_start is not None:
+                next_line_start = float(next_line_start)
+                if next_line_start < current_end:
+                    target_end = current_end
+                else:
+                    target_end = min(target_end, next_line_start)
+            final_target_end = target_end
+        duration = word_to_k_tag(start, target_end)
         tokens.append(f"{{\\k{duration}}}{token}")
-    return " ".join(tokens)
+    return " ".join(tokens), final_target_end
 
 
 def build_lines(aligned: Dict[str, Any], pad_end: float) -> List[str]:
     lines: List[str] = []
-    for entry in aligned.get("lines", []):
+    entries = aligned.get("lines", [])
+    for idx, entry in enumerate(entries):
         words = entry.get("words", [])
         if not words:
             continue
         start = format_timestamp(float(entry.get("s", words[0]["s"])))
-        end = format_timestamp(float(entry.get("e", words[-1]["e"])))
-        text = render_dialogue(words, pad_end)
+        next_line_start: float | None = None
+        if idx + 1 < len(entries):
+            next_entry = entries[idx + 1]
+            next_line_start = next_entry.get("s")
+            if next_line_start is None:
+                next_words = next_entry.get("words") or []
+                if next_words:
+                    next_line_start = next_words[0].get("s")
+            if next_line_start is not None:
+                next_line_start = float(next_line_start)
+        text, final_target_end = render_dialogue(words, pad_end, next_line_start)
+        end_time = final_target_end if words else float(entry.get("e", 0.0))
+        end = format_timestamp(end_time)
         lines.append(f"Dialogue: 0,{start},{end},Karo,,0,0,120,,{text}")
     return lines
 
