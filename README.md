@@ -11,6 +11,13 @@ make init
 make demo   # produces at least one mp4 in data/outputs/
 ```
 
+The `make demo` target seeds `examples/urls.txt` with a sample YouTube link
+and invokes `pipeline.batch` with `--max 1`. This downloads the referenced
+video, walks it through the full transcription/alignment/rendering pipeline,
+and leaves a vertically formatted `.mp4` in `data/outputs/` alongside the
+intermediate artifacts in the other `data/*` folders. Run `make init` first so
+the virtual environment and dependencies used by the demo are available.
+
 ## Step 1: Fetch long-form source material
 Use the lightweight helper script to grab a long-form video of a requested speaker. The video is stored in `input/longform/`.
 
