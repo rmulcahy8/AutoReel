@@ -52,8 +52,3 @@ Outputs land in `data/outputs/` alongside logs in `data/logs/`.
 - Python 3.10+ recommended.
 - `yt-dlp` version `2024.8.6` or newer (but < `2025.0`).
 - GPU optional. NVENC encoders are auto-detected at runtime; when missing the renderer falls back to `libx264`.
-
-## Troubleshooting
-- YouTube transcript fetch fails → pipeline falls back to local Whisper transcription.
-- WhisperX first run downloads models; rerun the batch if interrupted during downloads.
-- If captions feel late, increase `alignment.pad_end_s` in `config/defaults.yaml`. For excessive line breaks, tweak `alignment.min_gap_s`.
