@@ -178,6 +178,23 @@ def log_exception(logger: logging.Logger, error: Exception) -> None:
     logger.debug("", exc_info=True)
 
 
+def is_ffmpeg_encoder_available(codec: str) -> bool:
+    """Return True when FFmpeg exposes the requested encoder."""
+
+    if not codec:
+        return False
+
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-encoders"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return False
+
+    pattern = re.compile(rf"\\b{re.escape(codec)}\\b")
+    output = "\n".join(filter(None, [result.stdout, result.stderr]))
+    return bool(pattern.search(output))
+
+
 def build_yt_dlp_command(*args: str) -> List[str]:
     """Return a yt-dlp command that works even when the shim script is missing."""
 
