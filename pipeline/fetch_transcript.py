@@ -4,9 +4,16 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
+from xml.etree.ElementTree import ParseError
 
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api._errors import CouldNotRetrieveTranscript
+
+try:  # youtube-transcript-api>=0.6.3 exposes a common base error
+    from youtube_transcript_api import YouTubeTranscriptApiError  # type: ignore
+except ImportError:  # pragma: no cover - older versions do not expose this symbol
+    YouTubeTranscriptApiError = None  # type: ignore
 
 from .utils import (
     Config,
@@ -18,14 +25,32 @@ from .utils import (
 )
 
 
+def _youtube_error_types() -> Tuple[type, ...]:
+    """Build a tuple of youtube-transcript-api error classes to catch."""
+
+    base_errors: Tuple[type, ...] = (
+        TranscriptsDisabled,
+        NoTranscriptFound,
+        CouldNotRetrieveTranscript,
+    )
+
+    if YouTubeTranscriptApiError is not None:
+        return base_errors + (YouTubeTranscriptApiError,)
+
+    return base_errors
+
+
 def fetch_caption(video_id: str, languages: List[str], logger) -> List[dict]:
     try:
         transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=languages)
         logger.info("Fetched %d caption segments for %s", len(transcript), video_id)
         return transcript
-    except (TranscriptsDisabled, NoTranscriptFound) as exc:
+    except _youtube_error_types() as exc:
         logger.warning("Transcript unavailable for %s: %s", video_id, exc)
-        raise PipelineError(str(exc))
+        raise PipelineError(str(exc)) from exc
+    except ParseError as exc:
+        logger.warning("Transcript parsing failed for %s: %s", video_id, exc)
+        raise PipelineError(str(exc)) from exc
 
 
 def main(argv: List[str] | None = None) -> int:
