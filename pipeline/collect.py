@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
-import sys
 from pathlib import Path
 from typing import List
 
@@ -15,6 +13,7 @@ from .utils import (
     PipelineError,
     append_jsonl,
     build_logger,
+    build_yt_dlp_command,
     extract_video_id,
     resolve_path,
 )
@@ -41,39 +40,17 @@ def fetch_metadata(video_id: str, url: str, meta_path: Path, logger) -> dict:
     if meta_path.exists():
         logger.info("Metadata already exists for %s", video_id)
         return json.loads(meta_path.read_text(encoding="utf-8"))
-    cmd = build_yt_dlp_command(url)
+    cmd = build_yt_dlp_command(
+        "--skip-download",
+        "--no-warnings",
+        "--dump-json",
+        url,
+    )
     logger.info("Fetching metadata for %s", video_id)
     result = run_command_capture(cmd, logger)
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.write_text(result, encoding="utf-8")
     return json.loads(result)
-
-
-def build_yt_dlp_command(url: str) -> List[str]:
-    """Return a yt-dlp command that works even when the shim script is missing."""
-
-    common_args = [
-        "--skip-download",
-        "--no-warnings",
-        "--dump-json",
-        url,
-    ]
-
-    from shutil import which
-
-    for candidate in ("yt-dlp", "yt_dlp"):
-        if which(candidate):
-            return [candidate, *common_args]
-
-    try:
-        importlib.import_module("yt_dlp")
-    except ImportError as exc:  # pragma: no cover - defensive guard
-        raise PipelineError(
-            "yt-dlp is required but was not found. "
-            "Run 'make init' to install the project's dependencies."
-        ) from exc
-
-    return [sys.executable, "-m", "yt_dlp", *common_args]
 
 
 def main(argv: List[str] | None = None) -> int:

@@ -12,6 +12,7 @@ from .utils import (
     Config,
     PipelineError,
     build_logger,
+    build_yt_dlp_command,
     ensure_directory,
     resolve_path,
     run_command,
@@ -41,14 +42,13 @@ def ensure_video(video_id: str, raw_dir: Path, logger) -> Path:
     mp4_path = raw_dir / f"{video_id}.mp4"
     if mp4_path.exists():
         return mp4_path
-    cmd = [
-        "yt-dlp",
+    cmd = build_yt_dlp_command(
         "-f",
         "bestvideo+bestaudio/best",
         "-o",
         str(mp4_path),
         f"https://www.youtube.com/watch?v={video_id}",
-    ]
+    )
     run_command(cmd, logger)
     return mp4_path
 
