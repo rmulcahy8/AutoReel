@@ -52,7 +52,14 @@ def align(video_id: str, audio_path: Path, segments: List[Dict[str, Any]], langu
     logger.info("Loading WhisperX alignment model for %s", language)
     align_model, metadata = whisperx.load_align_model(language_code=language, device=device)
     logger.info("Aligning %d segments for %s", len(segments), video_id)
-    alignment = whisperx.align(segments, align_model, metadata, str(audio_path), return_char_alignments=False)
+    alignment = whisperx.align(
+        segments,
+        align_model,
+        metadata,
+        str(audio_path),
+        device=device,
+        return_char_alignments=False,
+    )
 
     words = [
         {"w": w.get("word", ""), "s": float(w.get("start", 0.0)), "e": float(w.get("end", 0.0))}
