@@ -73,7 +73,6 @@ def transcribe_audio(
         model,
         audio=audio_path,
         language=language,
-        word_timestamps=True,
         task="transcribe",
     )
 

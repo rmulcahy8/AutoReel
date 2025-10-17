@@ -1,3 +1,4 @@
+import sys
 import tempfile
 from pathlib import Path
 from unittest import TestCase, mock
@@ -67,3 +68,40 @@ class WriteSrtTest(TestCase):
 
         expected = "1\n00:00:00,000 --> 00:00:00,500\nHello\n\n2\n00:00:00,500 --> 00:00:01,000\nworld\n\n"
         self.assertEqual(contents, expected)
+
+
+class TranscribeAudioTest(TestCase):
+    def test_transcribe_audio_uses_supported_arguments(self):
+        mock_model = object()
+        mock_transcription = {
+            "segments": [
+                {
+                    "words": [
+                        {"text": " Hello", "start": 0.0, "end": 0.5},
+                        {"text": "world ", "start": 0.5, "end": 1.0},
+                    ]
+                }
+            ]
+        }
+
+        whisper_mock = mock.Mock()
+        whisper_mock.load_model.return_value = mock_model
+        whisper_mock.transcribe.return_value = mock_transcription
+
+        with mock.patch.dict(sys.modules, {"whisper_timestamped": whisper_mock}):
+            words = autocaption.transcribe_audio(
+                "audio.wav", model_name="small", language="en", device="cuda"
+            )
+
+        whisper_mock.load_model.assert_called_once_with("small", device="cuda")
+        whisper_mock.transcribe.assert_called_once_with(
+            mock_model,
+            audio="audio.wav",
+            language="en",
+            task="transcribe",
+        )
+        expected_words = [
+            {"text": "Hello", "start": 0.0, "end": 0.5},
+            {"text": "world", "start": 0.5, "end": 1.0},
+        ]
+        self.assertEqual(words, expected_words)
