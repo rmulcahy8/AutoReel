@@ -8,7 +8,12 @@ AutoReel is a command-line tool that downloads a YouTube video, generates word-l
    ```bash
    pip install -r requirements.txt
    ```
-2. Ensure `ffmpeg` is available on your `PATH`.
+2. Provide your OpenAI API key via the `OPENAI_API_KEY` environment variable (or pass it on the
+   command line with `--openai-api-key`).
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   ```
+3. Ensure `ffmpeg` is available on your `PATH`.
 
 ## Usage
 
@@ -17,3 +22,14 @@ python autocaption.py "https://www.youtube.com/watch?v=VIDEO_ID" output/captione
 ```
 
 The script automatically downloads the video, transcribes it, and produces a captioned MP4 file.
+
+To additionally create shorts, provide an output directory and (optionally) a custom highlight
+prompt:
+
+```bash
+python autocaption.py \
+  "https://www.youtube.com/watch?v=VIDEO_ID" \
+  output/captioned.mp4 \
+  --shorts-dir output/shorts \
+  --highlight-prompt "Focus on the most exciting demo moments."
+```
