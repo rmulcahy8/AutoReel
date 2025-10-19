@@ -79,7 +79,28 @@ class SelectHighlightSegmentsTest(TestCase):
             client=mock_client,
         )
 
-        mock_client.responses.create.assert_called_once()
+        expected_segments = "\n".join(
+            [
+                "[1] 0.00-1.50: This is great.",
+                "[2] 5.00-6.00: Another moment.",
+            ]
+        )
+        expected_user_text = f"Pick\n\nSegments:\n{expected_segments}"
+
+        mock_client.responses.create.assert_called_once_with(
+            model="gpt-5-nano",
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "input_text": expected_user_text,
+                        }
+                    ],
+                }
+            ],
+        )
         self.assertEqual(
             spans,
             [(0.0, 2.0), (5.0, 8.0), (10.0, 12.0), (15.0, 18.0), (20.0, 24.0)],

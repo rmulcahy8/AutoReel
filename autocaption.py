@@ -293,8 +293,8 @@ def select_highlight_segments(
                 "role": "user",
                 "content": [
                     {
-                        "type": "text",
-                        "text": user_text,
+                        "type": "input_text",
+                        "input_text": user_text,
                     }
                 ],
             }
