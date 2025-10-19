@@ -1,6 +1,7 @@
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import TestCase, mock
 
 import autocaption
@@ -53,6 +54,80 @@ class GenerateCaptionsTest(TestCase):
                 str(output_path.resolve()),
                 ffmpeg_binary="ffmpeg",
             )
+
+
+class SelectHighlightSegmentsTest(TestCase):
+    def test_select_highlight_segments_parses_openai_response(self):
+        words = [
+            {"text": "This", "start": 0.0, "end": 0.5},
+            {"text": "is", "start": 0.5, "end": 0.8},
+            {"text": "great.", "start": 0.8, "end": 1.5},
+            {"text": "Another", "start": 5.0, "end": 5.4},
+            {"text": "moment.", "start": 5.4, "end": 6.0},
+        ]
+
+        mock_client = mock.Mock()
+        response_text = "1) 0-2\n2) 5-8\n3) 10-12\n4) 15-18\n5) 20-24"
+        mock_response = SimpleNamespace(
+            output=[SimpleNamespace(content=[SimpleNamespace(text=response_text)])]
+        )
+        mock_client.responses.create.return_value = mock_response
+
+        spans = autocaption.select_highlight_segments(
+            words,
+            prompt="Pick",  # ensure custom prompt is used
+            client=mock_client,
+        )
+
+        mock_client.responses.create.assert_called_once()
+        self.assertEqual(
+            spans,
+            [(0.0, 2.0), (5.0, 8.0), (10.0, 12.0), (15.0, 18.0), (20.0, 24.0)],
+        )
+
+
+class CreateShortsTest(TestCase):
+    def test_create_shorts_invokes_ffmpeg_for_each_span(self):
+        spans = [(0.0, 5.0), (5.0, 10.0), (10.0, 15.0), (15.0, 20.0), (20.0, 25.0)]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            video_path = str(Path(tmpdir) / "video.mp4")
+            shorts_dir = str(Path(tmpdir) / "shorts")
+
+            with mock.patch("autocaption.subprocess.run") as run_mock:
+                outputs = autocaption.create_shorts(
+                    video_path,
+                    spans,
+                    shorts_dir,
+                    ffmpeg_binary="/usr/bin/ffmpeg",
+                )
+
+        self.assertEqual(len(outputs), 5)
+        self.assertTrue(all(output.startswith(shorts_dir) for output in outputs))
+        expected_calls = []
+        for index, (start, end) in enumerate(spans, start=1):
+            clip_path = Path(shorts_dir) / f"short_{index}.mp4"
+            expected_calls.append(
+                mock.call(
+                    [
+                        "/usr/bin/ffmpeg",
+                        "-y",
+                        "-i",
+                        video_path,
+                        "-ss",
+                        f"{start:.3f}",
+                        "-to",
+                        f"{end:.3f}",
+                        "-c",
+                        "copy",
+                        str(clip_path),
+                    ],
+                    check=True,
+                )
+            )
+
+        run_mock.assert_has_calls(expected_calls)
+        self.assertEqual(run_mock.call_count, 5)
 
 
 class WriteSrtTest(TestCase):
