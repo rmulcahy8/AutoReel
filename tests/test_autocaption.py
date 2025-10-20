@@ -95,7 +95,7 @@ class SelectHighlightSegmentsTest(TestCase):
                     "content": [
                         {
                             "type": "input_text",
-                            "input_text": expected_user_text,
+                            "text": expected_user_text,
                         }
                     ],
                 }
