@@ -355,13 +355,13 @@ def select_highlight_segments(
 
 
 def create_shorts(
-    video_path: str,
+    captioned_video_path: str,
     spans: Sequence[Tuple[float, float]],
     output_dir: str,
     *,
     ffmpeg_binary: str = "ffmpeg",
 ) -> List[str]:
-    """Render highlight clips for the given time spans."""
+    """Render highlight clips for the given time spans from the captioned video."""
 
     os.makedirs(output_dir, exist_ok=True)
     outputs: List[str] = []
@@ -372,7 +372,7 @@ def create_shorts(
             ffmpeg_binary,
             "-y",
             "-i",
-            video_path,
+            captioned_video_path,
             "-ss",
             f"{start:.3f}",
             "-to",
@@ -426,7 +426,7 @@ def generate_captions(
                 log_path=log_path,
             )
             create_shorts(
-                video_path,
+                output_path,
                 highlight_spans,
                 shorts_dir,
                 ffmpeg_binary=ffmpeg_binary,

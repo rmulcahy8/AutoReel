@@ -24,20 +24,33 @@ class GenerateCaptionsTest(TestCase):
             output_path = Path(tmpdir) / "result.mp4"
             temp_dir = Path(tmpdir) / "work"
             temp_dir.mkdir()
+            shorts_dir = str(Path(tmpdir) / "shorts")
 
             words = [
                 {"text": "Hello", "start": 0.0, "end": 0.5},
                 {"text": "world", "start": 0.5, "end": 1.0},
             ]
 
-            with mock.patch("autocaption.tempfile.TemporaryDirectory", return_value=DummyTemporaryDirectory(str(temp_dir))), \
-                mock.patch("autocaption.download_video", return_value=str(temp_dir / "video.mp4")) as download_mock, \
-                mock.patch("autocaption.extract_audio", return_value=str(temp_dir / "audio.wav")) as extract_mock, \
-                mock.patch("autocaption.transcribe_audio", return_value=words) as transcribe_mock, \
-                mock.patch("autocaption.write_srt", return_value=str(temp_dir / "captions.srt")) as write_mock, \
-                mock.patch("autocaption.burn_captions") as burn_mock:
+            with mock.patch(
+                "autocaption.tempfile.TemporaryDirectory",
+                return_value=DummyTemporaryDirectory(str(temp_dir)),
+            ), mock.patch(
+                "autocaption.download_video", return_value=str(temp_dir / "video.mp4")
+            ) as download_mock, mock.patch(
+                "autocaption.extract_audio", return_value=str(temp_dir / "audio.wav")
+            ) as extract_mock, mock.patch(
+                "autocaption.transcribe_audio", return_value=words
+            ) as transcribe_mock, mock.patch(
+                "autocaption.write_srt", return_value=str(temp_dir / "captions.srt")
+            ) as write_mock, mock.patch("autocaption.burn_captions") as burn_mock, mock.patch(
+                "autocaption.select_highlight_segments", return_value=[(0.0, 1.0)]
+            ) as select_mock, mock.patch("autocaption.create_shorts") as create_shorts_mock:
 
-                resolved_output = autocaption.generate_captions("https://youtu.be/example", str(output_path))
+                resolved_output = autocaption.generate_captions(
+                    "https://youtu.be/example",
+                    str(output_path),
+                    shorts_dir=shorts_dir,
+                )
 
             self.assertEqual(resolved_output, str(output_path.resolve()))
             download_mock.assert_called_once()
@@ -52,6 +65,13 @@ class GenerateCaptionsTest(TestCase):
                 str(temp_dir / "video.mp4"),
                 str(temp_dir / "captions.srt"),
                 str(output_path.resolve()),
+                ffmpeg_binary="ffmpeg",
+            )
+            select_mock.assert_called_once()
+            create_shorts_mock.assert_called_once_with(
+                str(output_path.resolve()),
+                [(0.0, 1.0)],
+                shorts_dir,
                 ffmpeg_binary="ffmpeg",
             )
 
@@ -112,12 +132,12 @@ class CreateShortsTest(TestCase):
         spans = [(0.0, 5.0), (5.0, 10.0), (10.0, 15.0), (15.0, 20.0), (20.0, 25.0)]
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            video_path = str(Path(tmpdir) / "video.mp4")
+            captioned_video_path = str(Path(tmpdir) / "video.mp4")
             shorts_dir = str(Path(tmpdir) / "shorts")
 
             with mock.patch("autocaption.subprocess.run") as run_mock:
                 outputs = autocaption.create_shorts(
-                    video_path,
+                    captioned_video_path,
                     spans,
                     shorts_dir,
                     ffmpeg_binary="/usr/bin/ffmpeg",
@@ -134,7 +154,7 @@ class CreateShortsTest(TestCase):
                         "/usr/bin/ffmpeg",
                         "-y",
                         "-i",
-                        video_path,
+                        captioned_video_path,
                         "-ss",
                         f"{start:.3f}",
                         "-to",
