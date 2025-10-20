@@ -269,6 +269,7 @@ def select_highlight_segments(
     prompt: str | None = None,
     client: object | None = None,
     api_key: str | None = None,
+    log_path: str | os.PathLike[str] | None = None,
 ) -> List[Tuple[float, float]]:
     """Call the OpenAI API to select the top five highlight spans."""
 
@@ -305,6 +306,50 @@ def select_highlight_segments(
     spans = _parse_highlight_spans(text)
     if len(spans) < 5:
         raise RuntimeError("OpenAI response did not return five highlight spans.")
+
+    if log_path:
+        try:
+            log_lines = [
+                "Highlight selection log",
+                "-----------------------",
+                f"Prompt: {highlight_prompt}",
+                "",
+                "Aggregated segments:",
+            ]
+            for idx, segment in enumerate(segments, start=1):
+                log_lines.append(
+                    f"  [{idx}] {segment['start']:.2f}-{segment['end']:.2f}: {segment['text']}"
+                )
+            log_lines.extend(
+                [
+                    "",
+                    "Raw model response:",
+                    text or "<empty response>",
+                    "",
+                    "Selected highlight spans:",
+                ]
+            )
+
+            for idx, (start_val, end_val) in enumerate(spans, start=1):
+                matching_segment = next(
+                    (
+                        segment
+                        for segment in segments
+                        if segment["start"] <= start_val < segment["end"]
+                    ),
+                    None,
+                )
+                segment_text = matching_segment["text"] if matching_segment else ""
+                log_lines.append(
+                    f"  [{idx}] {start_val:.2f}-{end_val:.2f}: {segment_text}"
+                )
+
+            log_file_path = Path(log_path)
+            log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(log_file_path, "w", encoding="utf-8") as log_file:
+                log_file.write("\n".join(log_lines))
+        except OSError as exc:
+            raise RuntimeError(f"Failed to write highlight log: {exc}") from exc
 
     return spans
 
@@ -371,11 +416,14 @@ def generate_captions(
         burn_captions(video_path, subtitle_path, output_path, ffmpeg_binary=ffmpeg_binary)
 
         if shorts_dir:
+            os.makedirs(shorts_dir, exist_ok=True)
+            log_path = Path(shorts_dir) / "highlight_log.txt"
             highlight_spans = select_highlight_segments(
                 words,
                 prompt=highlight_prompt,
                 client=highlight_client,
                 api_key=openai_api_key,
+                log_path=log_path,
             )
             create_shorts(
                 video_path,
