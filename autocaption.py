@@ -294,7 +294,7 @@ def select_highlight_segments(
                 "content": [
                     {
                         "type": "input_text",
-                        "input_text": user_text,
+                        "text": user_text,
                     }
                 ],
             }
