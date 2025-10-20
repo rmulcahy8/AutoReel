@@ -52,15 +52,3 @@ python -m unittest discover
 
 The `tests/test_autocaption.py` suite mocks external dependencies to confirm that the CLI orchestrates downloads, transcription, and subtitle burning without contacting remote services.
 
-## Manual smoke test
-
-To manually verify the end-to-end flow:
-
-1. Activate the environment where the dependencies are installed and ensure `ffmpeg` is on your `PATH`.
-2. Run the CLI against a short public-domain clip (for example, [“Big Buck Bunny - Blender Foundation”](https://www.youtube.com/watch?v=YE7VzlLtp-4)):
-
-   ```bash
-   python autocaption.py "https://www.youtube.com/watch?v=YE7VzlLtp-4" output/bbb-captioned.mp4
-   ```
-
-3. Play the resulting `output/bbb-captioned.mp4` and verify that each spoken word appears exactly during the interval reported by Whisper.
