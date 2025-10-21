@@ -24,7 +24,7 @@ python autocaption.py "https://www.youtube.com/watch?v=VIDEO_ID" output/captione
 The script automatically downloads the video, transcribes it, and produces a captioned MP4 file.
 
 To additionally create shorts, provide an output directory and (optionally) a custom highlight
-prompt:
+prompt. Each generated short is capped at one minute to keep clips concise:
 
 ```bash
 python autocaption.py \
