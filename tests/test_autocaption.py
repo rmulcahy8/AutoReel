@@ -147,6 +147,7 @@ class CreateShortsTest(TestCase):
         self.assertTrue(all(output.startswith(shorts_dir) for output in outputs))
         expected_calls = []
         for index, (start, end) in enumerate(spans, start=1):
+            expected_end = min(end, start + 60.0)
             clip_path = Path(shorts_dir) / f"short_{index}.mp4"
             expected_calls.append(
                 mock.call(
@@ -158,7 +159,7 @@ class CreateShortsTest(TestCase):
                         "-ss",
                         f"{start:.3f}",
                         "-to",
-                        f"{end:.3f}",
+                        f"{expected_end:.3f}",
                         "-c",
                         "copy",
                         str(clip_path),
@@ -169,6 +170,40 @@ class CreateShortsTest(TestCase):
 
         run_mock.assert_has_calls(expected_calls)
         self.assertEqual(run_mock.call_count, 5)
+
+    def test_create_shorts_trims_spans_exceeding_one_minute(self):
+        spans = [(30.0, 200.0)]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            captioned_video_path = str(Path(tmpdir) / "video.mp4")
+            shorts_dir = str(Path(tmpdir) / "shorts")
+
+            with mock.patch("autocaption.subprocess.run") as run_mock:
+                outputs = autocaption.create_shorts(
+                    captioned_video_path,
+                    spans,
+                    shorts_dir,
+                    ffmpeg_binary="ffmpeg",
+                )
+
+        self.assertEqual(len(outputs), 1)
+        expected_clip = Path(shorts_dir) / "short_1.mp4"
+        run_mock.assert_called_once_with(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                captioned_video_path,
+                "-ss",
+                "30.000",
+                "-to",
+                "90.000",
+                "-c",
+                "copy",
+                str(expected_clip),
+            ],
+            check=True,
+        )
 
 
 class WriteSrtTest(TestCase):

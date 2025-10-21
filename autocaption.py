@@ -367,6 +367,7 @@ def create_shorts(
     outputs: List[str] = []
 
     for index, (start, end) in enumerate(spans, start=1):
+        bounded_end = min(end, start + 60.0)
         clip_path = Path(output_dir) / f"short_{index}.mp4"
         command = [
             ffmpeg_binary,
@@ -376,7 +377,7 @@ def create_shorts(
             "-ss",
             f"{start:.3f}",
             "-to",
-            f"{end:.3f}",
+            f"{bounded_end:.3f}",
             "-c",
             "copy",
             str(clip_path),
