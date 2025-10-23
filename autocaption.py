@@ -155,6 +155,9 @@ DEFAULT_HIGHLIGHT_PROMPT = (
 )
 
 
+SHORT_CLIP_TAIL_SECONDS = 0.3
+
+
 def _aggregate_words_into_segments(words: Sequence[dict]) -> List[dict]:
     """Aggregate word-level timestamps into larger text segments."""
 
@@ -367,7 +370,9 @@ def create_shorts(
     outputs: List[str] = []
 
     for index, (start, end) in enumerate(spans, start=1):
-        bounded_end = min(end, start + 60.0)
+        bounded_end = min(end + SHORT_CLIP_TAIL_SECONDS, start + 60.0)
+        if bounded_end <= start:
+            bounded_end = min(end, start + 60.0)
         clip_path = Path(output_dir) / f"short_{index}.mp4"
         command = [
             ffmpeg_binary,
