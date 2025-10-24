@@ -151,7 +151,9 @@ def burn_captions(
 
 DEFAULT_HIGHLIGHT_PROMPT = (
     "Select the five most engaging, self-contained highlight moments from the transcript. "
-    "Return them as start-end second ranges in the format `start-end`."
+    "Aim for highlight ranges between roughly 20 seconds and one minute, only stretching closer to a full minute when the content stays compelling that long. "
+    "You may merge adjacent transcript segments to reach the target durations. "
+    "Return the highlights as start-end second ranges in the format `start-end`."
 )
 
 

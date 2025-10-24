@@ -24,7 +24,9 @@ python autocaption.py "https://www.youtube.com/watch?v=VIDEO_ID" output/captione
 The script automatically downloads the video, transcribes it, and produces a captioned MP4 file.
 
 To additionally create shorts, provide an output directory and (optionally) a custom highlight
-prompt. Each generated short is capped at one minute to keep clips concise:
+prompt. The default highlight prompt asks GPT to pick five moments lasting roughly 20–60 seconds,
+merging adjacent transcript snippets when helpful and stretching closer to a full minute only when
+the content stays compelling. Each generated short is capped at one minute to keep clips concise:
 
 ```bash
 python autocaption.py \
