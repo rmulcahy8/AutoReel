@@ -20,6 +20,7 @@ if TYPE_CHECKING:  # pragma: no cover - imported lazily in functions
 def download_video(url: str, download_dir: str) -> str:
     """Download the best available video using yt_dlp and return its path."""
     import yt_dlp
+    from yt_dlp.utils import DownloadError  # type: ignore
 
     ydl_opts = {
         "format": "bestvideo+bestaudio/best",
@@ -28,9 +29,20 @@ def download_video(url: str, download_dir: str) -> str:
         "quiet": True,
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        video_path = ydl.prepare_filename(info)
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            video_path = ydl.prepare_filename(info)
+    except DownloadError as exc:  # pragma: no cover - exercised in higher-level tests
+        message = str(exc)
+        lower_message = message.lower()
+        if "http error 403" in lower_message or "forbidden" in lower_message:
+            raise RuntimeError(
+                "Failed to download video: access was forbidden (HTTP 403). "
+                "This often means the video requires authentication, is region locked, or "
+                "otherwise restricted. Try supplying cookies or authenticating with yt-dlp."
+            ) from exc
+        raise RuntimeError(f"Failed to download video: {message}") from exc
 
     return video_path
 
@@ -155,9 +167,6 @@ DEFAULT_HIGHLIGHT_PROMPT = (
     "You may merge adjacent transcript segments to reach the target durations. "
     "Return the highlights as start-end second ranges in the format `start-end`."
 )
-
-
-SHORT_CLIP_TAIL_SECONDS = 0.3
 
 
 def _aggregate_words_into_segments(words: Sequence[dict]) -> List[dict]:
@@ -372,9 +381,9 @@ def create_shorts(
     outputs: List[str] = []
 
     for index, (start, end) in enumerate(spans, start=1):
-        bounded_end = min(end + SHORT_CLIP_TAIL_SECONDS, start + 60.0)
+        bounded_end = min(end, start + 60.0)
         if bounded_end <= start:
-            bounded_end = min(end, start + 60.0)
+            continue
         clip_path = Path(output_dir) / f"short_{index}.mp4"
         command = [
             ffmpeg_binary,
