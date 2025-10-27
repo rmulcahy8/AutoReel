@@ -153,7 +153,7 @@ def burn_captions(
         "-i",
         video_path,
         "-vf",
-        f"subtitles='{escaped_sub_path}'",
+        f"subtitles='{escaped_sub_path}':force_style='Alignment=5'",
         "-c:a",
         "copy",
         output_path,
