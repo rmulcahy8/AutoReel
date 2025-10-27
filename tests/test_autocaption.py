@@ -7,6 +7,45 @@ from unittest import TestCase, mock
 import autocaption
 
 
+class BurnCaptionsTest(TestCase):
+    def test_burn_captions_applies_alignment_and_escapes_path(self):
+        video_path = "input.mp4"
+        subtitle_path = "C:\\Videos\\caption's[1],test.srt"
+        output_path = "output.mp4"
+
+        expected_escaped = (
+            subtitle_path.replace("\\", "\\\\")
+            .replace(":", "\\:")
+            .replace("'", "\\'")
+            .replace(",", "\\,")
+            .replace("[", "\\[")
+            .replace("]", "\\]")
+        )
+
+        with mock.patch("autocaption.subprocess.run") as run_mock:
+            autocaption.burn_captions(
+                video_path,
+                subtitle_path,
+                output_path,
+                ffmpeg_binary="/usr/bin/ffmpeg",
+            )
+
+        run_mock.assert_called_once_with(
+            [
+                "/usr/bin/ffmpeg",
+                "-y",
+                "-i",
+                video_path,
+                "-vf",
+                f"subtitles='{expected_escaped}':force_style='Alignment=5'",
+                "-c:a",
+                "copy",
+                output_path,
+            ],
+            check=True,
+        )
+
+
 class DummyTemporaryDirectory:
     def __init__(self, path: str):
         self._path = path
