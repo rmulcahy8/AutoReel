@@ -23,6 +23,19 @@ python autocaption.py "https://www.youtube.com/watch?v=VIDEO_ID" output/captione
 
 The script automatically downloads the video, transcribes it, and produces a captioned MP4 file.
 
+## Simple graphical interface
+
+If you prefer a lightweight windowed app, run the Tkinter-based helper:
+
+```bash
+python autocaption_ui.py
+```
+
+The UI lets you paste a YouTube URL, choose where to save the captioned MP4, and optionally supply
+an OpenAI API key, custom highlight prompt, or a folder for generating shorts. The same external
+requirements apply: ensure `ffmpeg` is on your `PATH` and install the Python dependencies listed in
+`requirements.txt` before launching the interface.
+
 To additionally create shorts, provide an output directory and (optionally) a custom highlight
 prompt. The default highlight prompt asks GPT to pick five moments lasting roughly 20–60 seconds,
 merging adjacent transcript snippets when helpful and stretching closer to a full minute only when
